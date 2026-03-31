@@ -232,7 +232,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       <div id="urgent-wrap"></div>
 
       <!-- 상단 요약 바 -->
-      <div id="summary-bar" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div id="summary-bar" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
         <!-- 날씨 -->
         <div class="card" style="margin-bottom:0;padding:14px 18px;">
           <div class="clabel" style="margin-bottom:8px;">🌤 오늘 날씨 · 여산</div>
@@ -242,11 +242,6 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
         <div class="card" style="margin-bottom:0;padding:14px 18px;">
           <div class="clabel" style="margin-bottom:8px;">🍱 오늘 급식</div>
           <div id="home-meal"><div style="font-size:12px;color:var(--text3);">불러오는 중...</div></div>
-        </div>
-        <!-- 미결 공지 -->
-        <div class="card" style="margin-bottom:0;padding:14px 18px;">
-          <div class="clabel" style="margin-bottom:8px;">📋 공지 현황</div>
-          <div id="home-notice-stat"></div>
         </div>
       </div>
 
@@ -486,24 +481,6 @@ onSnapshot(query(collection(db,'notices'), orderBy('createdAt','desc')), snap =>
   document.getElementById('urgent-wrap').innerHTML = urg
     ? `<div class="ubanner"><div class="ulbl">📌 긴급 공지</div><div class="utext" style="font-weight:600;">${urg.title||''}</div>${urg.text?`<div class="utext" style="margin-top:3px;font-size:13px;opacity:.85;">${urg.text}</div>`:''}</div>` : '';
 
-  // 미결 공지 카운트
-  const urgent = list.filter(n=>n.badge==='urgent').length;
-  const info   = list.filter(n=>n.badge==='info').length;
-  const total  = list.length;
-  const statEl = document.getElementById('home-notice-stat');
-  if (statEl) statEl.innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:6px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <span style="font-size:13px;color:var(--text2);">활성 공지</span>
-        <span style="font-size:20px;font-weight:600;color:var(--text);">${total}건</span>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">
-        ${urgent?`<span class="badge bu">긴급 ${urgent}</span>`:''}
-        ${info?`<span class="badge bi">안내 ${info}</span>`:''}
-        ${allList.length-total>0?`<span class="badge" style="background:var(--surface2);color:var(--text3);">기한만료 ${allList.length-total}</span>`:''}
-      </div>
-      ${urgent?`<div style="font-size:11px;color:var(--red);margin-top:2px;">⚠ 긴급 공지 ${urgent}건 확인 필요</div>`:'<div style="font-size:11px;color:var(--accent);margin-top:2px;">✓ 긴급 공지 없음</div>'}
-    </div>`;
 });
 
 onSnapshot(collection(db,'calendar'), snap => {
@@ -529,7 +506,7 @@ onSnapshot(collection(db,'links'), snap => {
 });
 
 /* ── 공지 ── */
-function toggleNotice(id) {
+window.toggleNotice = function(id) {
   const body = document.getElementById('nb-'+id);
   const chev = document.getElementById('nc-'+id);
   if (!body) return;
@@ -1055,40 +1032,49 @@ async function loadWeather() {
 // ★ 여기에 NEIS API 키를 입력하세요
 // 발급: https://open.neis.go.kr → 회원가입 → 인증키 신청
 const NEIS_KEY = '27c046fa2fb64bb2b91bf9bb5cbcd31e';
-const SCHOOL_CODE = '7380834'; // 여산초등학교 행정표준코드
-const OFFICE_CODE = 'J10';     // 전북특별자치도교육청
+const SCHOOL_CODE = '7380834';  // 여산초등학교
+const OFFICE_CODE = 'J10';      // 전북특별자치도교육청
 
 async function loadMeal() {
   const el = document.getElementById('home-meal'); if (!el) return;
   const d = today;
   const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
 
-  if (NEIS_KEY === 'YOUR_NEIS_API_KEY') {
-    el.innerHTML = `<div style="font-size:12px;color:var(--text3);line-height:1.6;">
-      NEIS API 키 설정 필요<br>
-      <a href="https://open.neis.go.kr" target="_blank" style="color:var(--accent);font-size:11px;">open.neis.go.kr에서 발급 →</a>
-    </div>`;
-    return;
-  }
-
   try {
     const url = `https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${OFFICE_CODE}&SD_SCHUL_CODE=${SCHOOL_CODE}&MLSV_YMD=${dateStr}`;
     const res = await fetch(url);
     const json = await res.json();
+
+    // 에러 코드 확인
+    const errCode = json?.RESULT?.CODE || json?.mealServiceDietInfo?.[0]?.head?.[1]?.RESULT?.CODE;
+    if (errCode && errCode !== 'INFO-000') {
+      // 데이터 없음(INFO-200)은 정상 케이스
+      if (errCode === 'INFO-200') {
+        el.innerHTML = '<div class="empty" style="font-size:12px;">오늘 급식 정보가 없습니다.<br><span style="font-size:11px;color:var(--text3);">(방학 또는 미등록)</span></div>';
+      } else {
+        el.innerHTML = `<div style="font-size:11px;color:var(--text3);">오류: ${errCode}<br>학교코드를 확인해주세요.</div>`;
+      }
+      return;
+    }
+
     const rows = json?.mealServiceDietInfo?.[1]?.row;
-    if (!rows?.length) { el.innerHTML='<div class="empty">오늘 급식 정보가 없습니다.</div>'; return; }
+    if (!rows?.length) { el.innerHTML='<div class="empty" style="font-size:12px;">오늘 급식 정보가 없습니다.</div>'; return; }
 
     const meal = rows[0];
-    const dishes = (meal.DDISH_NM||'').replace(/<br\/>/g,'\n').split('\n').map(d=>d.replace(/\s*\([\d.]+\)/g,'').trim()).filter(Boolean);
+    const dishes = (meal.DDISH_NM||'').replace(/<br\/>/g,'\n').split('\n')
+      .map(item => item.replace(/\s*\([\d.]+\)/g,'').trim()).filter(Boolean);
     const cal = meal.CAL_INFO||'';
+    const origin = meal.ORPLC_INFO||'';
 
     el.innerHTML = `
-      <div style="font-size:12.5px;line-height:1.8;color:var(--text);">
-        ${dishes.map(d=>`<div style="display:flex;align-items:center;gap:5px;"><span style="color:var(--accent);font-size:10px;">●</span>${d}</div>`).join('')}
+      <div style="font-size:12.5px;line-height:1.9;color:var(--text);">
+        ${dishes.map(item=>`<div style="display:flex;align-items:center;gap:5px;">
+          <span style="color:var(--accent);font-size:9px;flex-shrink:0;">●</span>${item}
+        </div>`).join('')}
       </div>
       ${cal?`<div style="font-size:10px;color:var(--text3);margin-top:6px;font-family:'DM Mono',monospace;">${cal}</div>`:''}`;
   } catch(e) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--text3);">급식 정보를 불러올 수 없습니다.</div>';
+    el.innerHTML = `<div style="font-size:11px;color:var(--text3);">급식 정보를 불러올 수 없습니다.<br><span style="font-size:10px;">${e.message}</span></div>`;
   }
 }
 
