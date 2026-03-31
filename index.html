@@ -108,6 +108,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 .cc.today { background: var(--accent); color: #fff !important; font-weight: 600; }
 .cc.hev::after { content: ''; width: 4px; height: 4px; border-radius: 50%; background: var(--amber); position: absolute; bottom: 4px; }
 .cc.today.hev::after { background: rgba(255,255,255,.7); }
+.hol-dot { display: block; width: 4px; height: 4px; border-radius: 50%; background: #DC2626; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); }
 .cc.dim { opacity: .3; }
 .cc.sun { color: #DC2626; }
 .cc.sat { color: #2563EB; }
@@ -292,13 +293,22 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
           <button class="btn bp" onclick="openModal('instructor')">+ 추가</button>
         </div>
       </div>
+      <!-- 오늘/이번주 -->
       <div class="card">
         <div class="clabel" id="inst-lbl"></div>
         <div id="inst-today"></div>
       </div>
+      <!-- 월별 달력 뷰 -->
       <div class="card" style="margin-top:0;">
-        <div class="clabel">이번 주 전체 일정</div>
-        <div id="inst-week"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div class="clabel" style="margin-bottom:0;">월별 일정</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button class="calbtn" onclick="instPrev()">◂</button>
+            <span id="inst-month-title" style="font-size:13px;font-weight:600;min-width:70px;text-align:center;"></span>
+            <button class="calbtn" onclick="instNext()">▸</button>
+          </div>
+        </div>
+        <div id="inst-month-list"></div>
       </div>
     </div>
 
@@ -482,23 +492,40 @@ function drawCal(tid, gid, eid, y, m) {
   const fd=new Date(y,m-1,1).getDay(), dim=new Date(y,m,0).getDate(), dip=new Date(y,m-1,0).getDate();
   const el=document.getElementById(tid); if (el) el.textContent=`${y}년 ${m}월`;
   const evs=allEv.filter(e=>+e.year===y&&+e.month===m);
-  const evD=new Set(evs.map(e=>+e.day));
+
+  // 공휴일 날짜 세트 (type='holiday')
+  const holDays = new Set(evs.filter(e=>e.type==='holiday').map(e=>+e.day));
+  const evDays  = new Set(evs.filter(e=>e.type!=='holiday').map(e=>+e.day));
+
   let c=DAYS.map(d=>`<div class="cdn">${d}</div>`).join('');
   for (let i=0;i<fd;i++) c+=`<div class="cc dim">${dip-fd+1+i}</div>`;
   for (let d=1;d<=dim;d++) {
     const isT=d===today.getDate()&&m===today.getMonth()+1&&y===today.getFullYear();
     const dow=(fd+d-1)%7;
-    const cls=['cc',isT?'today':'',evD.has(d)?'hev':'',dow===0?'sun':'',dow===6?'sat':''].filter(Boolean).join(' ');
-    c+=`<div class="${cls}">${d}</div>`;
+    const isHol = holDays.has(d);
+    const hasEv = evDays.has(d);
+    const isSun = dow===0 || isHol;
+    const cls=['cc', isT?'today':'', hasEv?'hev':'', isSun?'sun':'', dow===6?'sat':''].filter(Boolean).join(' ');
+    // 공휴일이면 날짜 숫자 빨갛게 + 점 표시
+    c+=`<div class="${cls}" style="${isHol&&!isT?'color:#DC2626;font-weight:600;':''}">${d}${isHol?'<span class="hol-dot"></span>':''}</div>`;
   }
   for (let d=1;d<=42-fd-dim;d++) c+=`<div class="cc dim">${d}</div>`;
   const g=document.getElementById(gid); if (g) g.innerHTML=c;
+
   const ev=document.getElementById(eid); if (!ev) return;
   if (!evs.length) { ev.innerHTML='<div class="empty">이달 등록된 일정이 없습니다.</div>'; return; }
+
+  const TYPE_STYLE = {
+    holiday: 'background:var(--red-lt);color:var(--red);',
+    default: 'background:var(--accent-lt);color:var(--accent);'
+  };
   ev.innerHTML=evs.sort((a,b)=>+a.day-+b.day).map(e=>`
     <div class="evitem">
-      <div class="evday">${e.day}일</div>
-      <div style="flex:1;"><div class="evname">${e.name}</div>${e.detail?`<div class="evdetail">${e.detail}</div>`:''}</div>
+      <div class="evday" style="${e.type==='holiday'?'background:var(--red-lt);color:var(--red);':''}">${e.day}일</div>
+      <div style="flex:1;">
+        <div class="evname" style="${e.type==='holiday'?'color:var(--red);':''}">${e.name}</div>
+        ${e.detail?`<div class="evdetail">${e.detail}</div>`:''}
+      </div>
       <div class="iact">
         <button class="btn bsm" onclick="openModal('calendar','${e.id}')">수정</button>
         <button class="btn bd" onclick="del('calendar','${e.id}')">삭제</button>
@@ -512,15 +539,20 @@ window.hPrev=()=>{hM--;if(hM<1){hM=12;hY--;}drawCal('h-cal-title','h-cal-grid','
 window.hNext=()=>{hM++;if(hM>12){hM=1;hY++;}drawCal('h-cal-title','h-cal-grid','h-cal-events',hY,hM);};
 
 /* ── 외부강사 ── */
+let instY = today.getFullYear(), instM = today.getMonth()+1;
+
 function renderInst() {
-  const dow=today.getDay();
-  const lbl=document.getElementById('inst-lbl');
-  if (lbl) lbl.textContent=`오늘 (${today.getMonth()+1}/${today.getDate()} ${DAYS[dow]}) 수업`;
-  const card=i=>`
+  const dow = today.getDay();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+  const lbl = document.getElementById('inst-lbl');
+  if (lbl) lbl.textContent = `오늘 (${today.getMonth()+1}/${today.getDate()} ${DAYS[dow]}) 수업`;
+
+  const card = i => `
     <div class="icard">
-      <div class="itime">${i.time}</div>
+      <div class="itime">${i.time||''}</div>
       <div class="ibody">
-        <div class="irow"><span class="isub">${i.subject}</span><span class="igrade">${i.grade}</span></div>
+        <div class="irow"><span class="isub">${i.subject}</span><span class="igrade">${i.grade||''}</span></div>
         <div class="idetail">${i.room||''}${i.detail?' · '+i.detail:''}</div>
       </div>
       <div class="iact">
@@ -528,13 +560,91 @@ function renderInst() {
         <button class="btn bd" onclick="del('instructors','${i.id}')">삭제</button>
       </div>
     </div>`;
-  const te=document.getElementById('inst-today');
-  if (te) { const l=allInst.filter(i=>+i.dayOfWeek===dow); te.innerHTML=l.length?l.map(card).join(''):'<div class="empty">오늘 외부강사 수업이 없습니다.</div>'; }
-  let wk='';
-  [1,2,3,4,5].forEach(d=>{ const l=allInst.filter(i=>+i.dayOfWeek===d); if (!l.length) return; wk+=`<div class="dowlbl">${DAYS[d]}요일</div>${l.map(card).join('')}`; });
-  const we=document.getElementById('inst-week');
-  if (we) we.innerHTML=wk||'<div class="empty">이번 주 외부강사 일정이 없습니다.</div>';
+
+  // 오늘 수업: 날짜 일치 or 요일 일치(dayOfWeek 방식)
+  const todayItems = allInst.filter(i => {
+    if (i.year && i.month && i.day)
+      return +i.year===today.getFullYear() && +i.month===today.getMonth()+1 && +i.day===today.getDate();
+    return +i.dayOfWeek === dow;
+  });
+  const te = document.getElementById('inst-today');
+  if (te) te.innerHTML = todayItems.length ? todayItems.map(card).join('') : '<div class="empty">오늘 외부강사 수업이 없습니다.</div>';
+
+  renderInstMonth();
 }
+
+function renderInstMonth() {
+  const titleEl = document.getElementById('inst-month-title');
+  if (titleEl) titleEl.textContent = `${instY}년 ${instM}월`;
+
+  // 해당 월 날짜 기반 일정
+  const dated = allInst.filter(i => i.year && +i.year===instY && +i.month===instM);
+  // 요일 기반 일정 (연극수업 등) - 해당 월의 해당 요일 날짜 계산
+  const byDow = allInst.filter(i => i.dayOfWeek && !i.year);
+  const daysInMonth = new Date(instY, instM, 0).getDate();
+  const dowExpanded = [];
+  for (let d=1; d<=daysInMonth; d++) {
+    const dt = new Date(instY, instM-1, d);
+    const dow = dt.getDay();
+    byDow.forEach(i => {
+      if (+i.dayOfWeek === dow) dowExpanded.push({...i, _day:d});
+    });
+  }
+
+  // 날짜별로 묶기
+  const dayMap = {};
+  dated.forEach(i => {
+    const k = +i.day;
+    if (!dayMap[k]) dayMap[k] = [];
+    dayMap[k].push(i);
+  });
+  dowExpanded.forEach(i => {
+    const k = i._day;
+    if (!dayMap[k]) dayMap[k] = [];
+    dayMap[k].push(i);
+  });
+
+  const listEl = document.getElementById('inst-month-list');
+  if (!listEl) return;
+  const days = Object.keys(dayMap).map(Number).sort((a,b)=>a-b);
+  if (!days.length) { listEl.innerHTML='<div class="empty">이달 등록된 외부강사 일정이 없습니다.</div>'; return; }
+
+  const DOW_KR = ['일','월','화','수','목','금','토'];
+  listEl.innerHTML = days.map(d => {
+    const dt = new Date(instY, instM-1, d);
+    const dowKr = DOW_KR[dt.getDay()];
+    const items = dayMap[d];
+    // 같은 수업명으로 묶기
+    const grouped = {};
+    items.forEach(i => {
+      const key = i.subject;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(i);
+    });
+    return `
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
+        <div style="min-width:60px;text-align:center;">
+          <div style="font-size:18px;font-weight:600;color:var(--text);">${d}</div>
+          <div style="font-size:11px;color:var(--text3);">${dowKr}요일</div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+          ${Object.entries(grouped).map(([subj, list]) => `
+            <div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+              <span class="badge bi" style="margin-top:2px;">${subj}</span>
+              <div>
+                ${list.map(i=>`
+                  <div style="font-size:13px;"><span style="color:var(--accent);font-weight:500;">${i.grade||''}</span>${i.time?' · '+i.time:''} ${i.room?'· '+i.room:''}</div>
+                `).join('')}
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+window.instPrev = () => { instM--; if(instM<1){instM=12;instY--;} renderInstMonth(); };
+window.instNext = () => { instM++; if(instM>12){instM=1;instY++;} renderInstMonth(); };
+
 
 /* ── 방과후·늘봄 ── */
 // target 필드에서 학년 숫자 추출 (예: "초1-2" → [1,2], "초3-6" → [3,4,5,6], "초1" → [1])
@@ -659,6 +769,10 @@ function buildForm(t,v={}) {
     <div class="fg"><label>날짜 (예: 2026.04.01)</label><input id="f-date" value="${v.date||''}"></div>
     <div class="fg"><label>작성자</label><input id="f-author" value="${v.author||''}"></div>`;
   if (t==='calendar') return `
+    <div class="fg"><label>유형</label><select id="f-type">
+      <option value=""       ${!v.type||v.type===''?'selected':''}>일반 일정</option>
+      <option value="holiday" ${v.type==='holiday'?'selected':''}>🔴 공휴일 (달력 빨간 표시)</option>
+    </select></div>
     <div class="fg"><label>연도</label><input type="number" id="f-year" value="${v.year||today.getFullYear()}"></div>
     <div class="fg"><label>월</label><input type="number" id="f-month" min="1" max="12" value="${v.month||today.getMonth()+1}"></div>
     <div class="fg"><label>일</label><input type="number" id="f-day" min="1" max="31" value="${v.day||''}"></div>
@@ -700,7 +814,7 @@ window.saveModal = async () => {
   const g=id=>document.getElementById(id)?.value?.trim()||'';
   let data={}, coll='';
   if (curModal==='notice')      { data={badge:g('f-badge'),text:g('f-text'),date:g('f-date'),author:g('f-author'),createdAt:serverTimestamp()}; coll='notices';     if (!data.text){alert('내용을 입력하세요.');return;} }
-  else if (curModal==='calendar')   { data={year:+g('f-year'),month:+g('f-month'),day:+g('f-day'),name:g('f-name'),detail:g('f-detail')}; coll='calendar';    if (!data.name||!data.day){alert('날짜와 일정명을 입력하세요.');return;} }
+  else if (curModal==='calendar')   { data={year:+g('f-year'),month:+g('f-month'),day:+g('f-day'),name:g('f-name'),detail:g('f-detail'),type:g('f-type')}; coll='calendar';    if (!data.name||!data.day){alert('날짜와 일정명을 입력하세요.');return;} }
   else if (curModal==='instructor') { data={dayOfWeek:+g('f-dow'),time:g('f-time'),subject:g('f-subject'),grade:g('f-grade'),room:g('f-room'),detail:g('f-detail')}; coll='instructors'; if (!data.subject){alert('수업명을 입력하세요.');return;} }
   else if (curModal==='afterschool'){ data={className:g('f-class'),day:+g('f-day'),time:g('f-time'),program:g('f-program'),type:g('f-type'),location:g('f-location'),target:g('f-target')}; coll='afterschool'; if (!data.program||!data.time){alert('시간과 프로그램명을 입력하세요.');return;} }
   else if (curModal==='link')       { data={icon:g('f-icon'),name:g('f-name'),desc:g('f-desc'),url:g('f-url')}; coll='links'; if (!data.name||!data.url){alert('이름과 URL을 입력하세요.');return;} }
@@ -714,8 +828,9 @@ window.del=async(coll,id)=>{ if(!confirm('삭제하시겠습니까?'))return; aw
 
 /* ── CSV ── */
 const TMPL={
-  calendar:   {comment:'# year,month,day,name,detail',    headers:['year','month','day','name','detail'],                       rows:[[2026,4,16,'세월호 10주기 추모 활동','전 학급 학습지'],[2026,5,5,'어린이날','휴업일']]},
-  instructor: {comment:'# dayOfWeek: 1=월 2=화 3=수 4=목 5=금', headers:['dayOfWeek','time','subject','grade','room','detail'],rows:[[1,'09:00~09:40','체육 (스포츠 강사)','3학년','체육관','전래놀이 수업'],[3,'14:00~14:40','미술 (공예 강사)','2학년','미술실','']]},
+  calendar:   {comment:'# type: holiday=공휴일(빨간표시) / 비워두면 일반일정', headers:['year','month','day','name','detail','type'],
+                rows:[[2026,4,16,'세월호 10주기 추모 활동','전 학급 학습지',''],[2026,5,5,'어린이날','휴업일','holiday']]},
+  instructor: {comment:'# 날짜지정: year,month,day 입력 / 요일고정: dayOfWeek만 입력(1=월~5=금)', headers:['year','month','day','dayOfWeek','time','subject','grade','room','detail'],rows:[[2026,4,2,'','09:00~10:20','공예수업','1학년','무한상상실','1~2교시'],['','','',1,'09:00~09:40','연극수업','1-6학년','강당','학년별 순환']]},
   afterschool:{comment:'# type: 맞춤형 / 선택형(교육) / 선택형(돌봄)  |  day: 1=월 2=화 3=수 4=목 5=금', headers:['className','day','time','program','type','location','target'],
               rows:[['늘봄1반',1,'13:10~13:50','미술','맞춤형','조리실습실','초1'],['늘봄1반',1,'14:00~14:40','놀이체육','맞춤형','강당','초1'],['늘봄1반',2,'14:00~14:40','컴퓨터','맞춤형','컴퓨터실','초1'],['늘봄2반',1,'14:00~14:40','놀이체육','맞춤형','강당','초2']]}
 };
@@ -745,7 +860,7 @@ function readCSVFile(file) {
 window.openUpload=sec=>{ upSec=sec; const lb={calendar:'학사일정',instructor:'외부강사',afterschool:'방과후·늘봄'}; document.getElementById('up-title').textContent=`CSV 업로드 — ${lb[sec]}`; document.getElementById('csv-input').value=''; document.getElementById('csv-preview').style.display='none'; document.getElementById('up-ov').classList.add('open'); document.getElementById('csv-input').onchange=async e=>{ const f=e.target.files[0]; if (!f) return; const txt=await readCSVFile(f); const lines=txt.split('\n').filter(l=>l.trim()&&!l.startsWith('#')).slice(0,6); const p=document.getElementById('csv-preview'); p.textContent=lines.join('\n'); p.style.display='block'; }; };
 window.closeUpload=e=>{ if(e&&e.target!==document.getElementById('up-ov'))return; document.getElementById('up-ov').classList.remove('open'); upSec=null; };
 
-window.doUpload=async()=>{ const f=document.getElementById('csv-input').files[0]; if (!f){alert('파일을 선택하세요.');return;} const txt=await readCSVFile(f); const lines=txt.split('\n').filter(l=>l.trim()&&!l.startsWith('#')); if (lines.length<2){alert('데이터가 없습니다.');return;} const headers=lines[0].split(',').map(h=>h.replace(/"/g,'').trim()); const rows=lines.slice(1).map(line=>{ const vals=line.split(',').map(v=>v.replace(/^"|"$/g,'').trim()); const obj={}; headers.forEach((h,i)=>{obj[h]=vals[i]||'';}); return obj; }).filter(r=>Object.values(r).some(v=>v)); const cm={calendar:'calendar',instructor:'instructors',afterschool:'afterschool'}; const coll=cm[upSec]; const nf={calendar:['year','month','day'],instructor:['dayOfWeek'],afterschool:['day']}; rows.forEach(r=>{(nf[upSec]||[]).forEach(fld=>{if(r[fld])r[fld]=+r[fld];});}); const snap=await getDocs(collection(db,coll)); await Promise.all(snap.docs.map(d=>deleteDoc(doc(db,coll,d.id)))); await Promise.all(rows.map(r=>addDoc(collection(db,coll),r))); alert(`${rows.length}건 업로드 완료!`); closeUpload(); };
+window.doUpload=async()=>{ const f=document.getElementById('csv-input').files[0]; if (!f){alert('파일을 선택하세요.');return;} const txt=await readCSVFile(f); const lines=txt.split('\n').filter(l=>l.trim()&&!l.startsWith('#')); if (lines.length<2){alert('데이터가 없습니다.');return;} const headers=lines[0].split(',').map(h=>h.replace(/"/g,'').trim()); const rows=lines.slice(1).map(line=>{ const vals=line.split(',').map(v=>v.replace(/^"|"$/g,'').trim()); const obj={}; headers.forEach((h,i)=>{obj[h]=vals[i]||'';}); return obj; }).filter(r=>Object.values(r).some(v=>v)); const cm={calendar:'calendar',instructor:'instructors',afterschool:'afterschool'}; const coll=cm[upSec]; const nf={calendar:['year','month','day'],instructor:['dayOfWeek','year','month','day'],afterschool:['day']}; rows.forEach(r=>{(nf[upSec]||[]).forEach(fld=>{if(r[fld])r[fld]=+r[fld];});}); const snap=await getDocs(collection(db,coll)); await Promise.all(snap.docs.map(d=>deleteDoc(doc(db,coll,d.id)))); await Promise.all(rows.map(r=>addDoc(collection(db,coll),r))); alert(`${rows.length}건 업로드 완료!`); closeUpload(); };
 </script>
 </body>
 </html>
