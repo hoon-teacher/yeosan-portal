@@ -577,66 +577,82 @@ function renderInstMonth() {
   const titleEl = document.getElementById('inst-month-title');
   if (titleEl) titleEl.textContent = `${instY}년 ${instM}월`;
 
-  // 해당 월 날짜 기반 일정
   const dated = allInst.filter(i => i.year && +i.year===instY && +i.month===instM);
-  // 요일 기반 일정 (연극수업 등) - 해당 월의 해당 요일 날짜 계산
-  const byDow = allInst.filter(i => i.dayOfWeek && !i.year);
-  const daysInMonth = new Date(instY, instM, 0).getDate();
-  const dowExpanded = [];
-  for (let d=1; d<=daysInMonth; d++) {
-    const dt = new Date(instY, instM-1, d);
-    const dow = dt.getDay();
-    byDow.forEach(i => {
-      if (+i.dayOfWeek === dow) dowExpanded.push({...i, _day:d});
-    });
-  }
+  const listEl = document.getElementById('inst-month-list');
+  if (!listEl) return;
+  if (!dated.length) { listEl.innerHTML='<div class="empty">이달 등록된 외부강사 일정이 없습니다.</div>'; return; }
 
-  // 날짜별로 묶기
+  const DOW_KR = ['일','월','화','수','목','금','토'];
+  const SUBJ_COLOR = { '공예수업':'camber', '연극수업':'cblue' };
+
+  // 날짜별 묶기
   const dayMap = {};
   dated.forEach(i => {
     const k = +i.day;
     if (!dayMap[k]) dayMap[k] = [];
     dayMap[k].push(i);
   });
-  dowExpanded.forEach(i => {
-    const k = i._day;
-    if (!dayMap[k]) dayMap[k] = [];
-    dayMap[k].push(i);
-  });
 
-  const listEl = document.getElementById('inst-month-list');
-  if (!listEl) return;
   const days = Object.keys(dayMap).map(Number).sort((a,b)=>a-b);
-  if (!days.length) { listEl.innerHTML='<div class="empty">이달 등록된 외부강사 일정이 없습니다.</div>'; return; }
 
-  const DOW_KR = ['일','월','화','수','목','금','토'];
   listEl.innerHTML = days.map(d => {
     const dt = new Date(instY, instM-1, d);
     const dowKr = DOW_KR[dt.getDay()];
+    const isToday = d===today.getDate() && instM===today.getMonth()+1 && instY===today.getFullYear();
     const items = dayMap[d];
-    // 같은 수업명으로 묶기
-    const grouped = {};
+
+    // 수업별로 묶기
+    const subjMap = {};
     items.forEach(i => {
-      const key = i.subject;
-      if (!grouped[key]) grouped[key] = [];
-      grouped[key].push(i);
+      if (!subjMap[i.subject]) subjMap[i.subject] = [];
+      subjMap[i.subject].push(i);
     });
+
+    // 시간 목록 (정렬)
+    const times = [...new Set(items.map(i=>i.time))].sort();
+
     return `
-      <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
-        <div style="min-width:60px;text-align:center;">
-          <div style="font-size:18px;font-weight:600;color:var(--text);">${d}</div>
-          <div style="font-size:11px;color:var(--text3);">${dowKr}요일</div>
+      <div style="margin-bottom:20px;">
+        <!-- 날짜 헤더 -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <div style="width:42px;height:42px;border-radius:10px;background:${isToday?'var(--accent)':'var(--surface2)'};
+            display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
+            <span style="font-size:16px;font-weight:600;color:${isToday?'#fff':'var(--text)'};">${d}</span>
+            <span style="font-size:9px;color:${isToday?'rgba(255,255,255,.8)':'var(--text3)'};">${dowKr}</span>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${Object.keys(subjMap).map(s=>`<span class="chip ${SUBJ_COLOR[s]||'cgray'}">${s}</span>`).join('')}
+          </div>
         </div>
-        <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
-          ${Object.entries(grouped).map(([subj, list]) => `
-            <div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;">
-              <span class="badge bi" style="margin-top:2px;">${subj}</span>
-              <div>
-                ${list.map(i=>`
-                  <div style="font-size:13px;"><span style="color:var(--accent);font-weight:500;">${i.grade||''}</span>${i.time?' · '+i.time:''} ${i.room?'· '+i.room:''}</div>
+        <!-- 시간표 -->
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:360px;">
+            <thead>
+              <tr style="border-bottom:1.5px solid var(--border2);">
+                <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);width:110px;">시간</th>
+                ${Object.keys(subjMap).map(s=>`
+                  <th style="padding:6px 10px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);">${s}</th>
                 `).join('')}
-              </div>
-            </div>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${times.map(t => {
+                const row = items.filter(i=>i.time===t);
+                const subjRow = {};
+                row.forEach(i=>{ if(!subjRow[i.subject]) subjRow[i.subject]=[]; subjRow[i.subject].push(i); });
+                return `<tr style="border-bottom:1px solid var(--border);">
+                  <td style="padding:7px 10px;font-size:11.5px;color:var(--text3);font-family:'DM Mono',monospace;background:var(--surface2);">${t}</td>
+                  ${Object.keys(subjMap).map(s => {
+                    const cell = subjRow[s]||[];
+                    if (!cell.length) return `<td style="padding:7px 10px;"></td>`;
+                    return `<td style="padding:7px 10px;text-align:center;">
+                      ${cell.map(i=>`<span class="chip ${SUBJ_COLOR[s]||'cgray'}" style="font-size:11px;">${i.grade||''}</span>`).join('<br>')}
+                    </td>`;
+                  }).join('')}
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
         </div>
       </div>`;
   }).join('');
