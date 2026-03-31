@@ -210,8 +210,8 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div class="nav-item active" data-p="home"        onclick="go('home',this)"><span class="nav-icon">🏠</span> 홈</div>
     <div class="nav-item"        data-p="notice"      onclick="go('notice',this)"><span class="nav-icon">📢</span> 공지사항</div>
     <div class="nav-item"        data-p="calendar"    onclick="go('calendar',this)"><span class="nav-icon">📅</span> 학사일정</div>
-    <div class="nav-item"        data-p="instructor"  onclick="go('instructor',this)"><span class="nav-icon">👨‍🏫</span> 외부강사</div>
-    <div class="nav-item"        data-p="afterschool" onclick="go('afterschool',this)"><span class="nav-icon">🌙</span> 방과후·늘봄</div>
+    <div class="nav-item"        data-p="instructor"  onclick="go('instructor',this)"><span class="nav-icon">👨‍🏫</span> 협력수업</div>
+    <div class="nav-item"        data-p="afterschool" onclick="go('afterschool',this)"><span class="nav-icon">🌙</span> 늘봄학교</div>
     <div class="nav-item"        data-p="links"       onclick="go('links',this)"><span class="nav-icon">🔗</span> 공유 링크</div>
   </aside>
 
@@ -229,7 +229,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
           <div class="crow"><span class="clabel">📢 공지사항</span><button class="blnk" onclick="go('notice',document.querySelector('[data-p=notice]'))">전체보기 →</button></div>
           <ul class="nlist" id="home-notices"></ul>
         </div>
-        <div class="card" style="grid-row:span 2;">
+        <div class="card" style="grid-row:span 3;">
           <div class="crow"><span class="clabel">📅 학사일정</span><button class="blnk" onclick="go('calendar',document.querySelector('[data-p=calendar]'))">전체보기 →</button></div>
           <div class="calnr">
             <button class="calbtn" onclick="hPrev()">◂</button>
@@ -238,6 +238,10 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
           </div>
           <div class="calgrid" id="h-cal-grid"></div>
           <div id="h-cal-events" style="margin-top:14px;"></div>
+        </div>
+        <div class="card">
+          <div class="crow"><span class="clabel">👨‍🏫 오늘의 협력수업</span><button class="blnk" onclick="go('instructor',document.querySelector('[data-p=instructor]'))">전체보기 →</button></div>
+          <div id="home-inst"></div>
         </div>
         <div class="card">
           <div class="clabel">🔗 빠른 링크</div>
@@ -283,10 +287,10 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       </div>
     </div>
 
-    <!-- 외부강사 -->
+    <!-- 협력수업 -->
     <div class="page" id="page-instructor">
       <div class="ph">
-        <div class="pt">외부강사 수업</div>
+        <div class="pt">협력수업</div>
         <div class="pa">
           <button class="btn bs" onclick="dlCSV('instructor')">⬇ 예시 CSV</button>
           <button class="btn bs" onclick="openUpload('instructor')">⬆ CSV 업로드</button>
@@ -312,10 +316,10 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       </div>
     </div>
 
-    <!-- 방과후·늘봄 -->
+    <!-- 늘봄학교 -->
     <div class="page" id="page-afterschool">
       <div class="ph">
-        <div class="pt">방과후·늘봄</div>
+        <div class="pt">늘봄학교</div>
         <div class="pa">
           <button class="btn bs" onclick="dlCSV('afterschool')">⬇ 예시 CSV</button>
           <button class="btn bs" onclick="openUpload('afterschool')">⬆ CSV 업로드</button>
@@ -365,7 +369,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
   <div class="mni"        data-p="notice"      onclick="go('notice',this)"><span>📢</span>공지</div>
   <div class="mni"        data-p="calendar"    onclick="go('calendar',this)"><span>📅</span>일정</div>
   <div class="mni"        data-p="instructor"  onclick="go('instructor',this)"><span>👨‍🏫</span>강사</div>
-  <div class="mni"        data-p="afterschool" onclick="go('afterschool',this)"><span>🌙</span>방과후</div>
+  <div class="mni"        data-p="afterschool" onclick="go('afterschool',this)"><span>🌙</span>늘봄</div>
   <div class="mni"        data-p="links"       onclick="go('links',this)"><span>🔗</span>링크</div>
 </nav>
 
@@ -538,37 +542,84 @@ window.mNext=()=>{calM++;if(calM>12){calM=1;calY++;}drawCal('m-cal-title','m-cal
 window.hPrev=()=>{hM--;if(hM<1){hM=12;hY--;}drawCal('h-cal-title','h-cal-grid','h-cal-events',hY,hM);};
 window.hNext=()=>{hM++;if(hM>12){hM=1;hY++;}drawCal('h-cal-title','h-cal-grid','h-cal-events',hY,hM);};
 
-/* ── 외부강사 ── */
+/* ── 협력수업 ── */
 let instY = today.getFullYear(), instM = today.getMonth()+1;
+
+// 중복 제거: year+month+day+time+subject+grade 조합 기준
+function dedupeInst(items) {
+  const seen = new Set();
+  return items.filter(i => {
+    const key = `${i.year||''}-${i.month||''}-${i.day||''}-${i.time||''}-${i.subject||''}-${i.grade||''}`;
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+}
 
 function renderInst() {
   const dow = today.getDay();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-
   const lbl = document.getElementById('inst-lbl');
   if (lbl) lbl.textContent = `오늘 (${today.getMonth()+1}/${today.getDate()} ${DAYS[dow]}) 수업`;
 
-  const card = i => `
-    <div class="icard">
-      <div class="itime">${i.time||''}</div>
-      <div class="ibody">
-        <div class="irow"><span class="isub">${i.subject}</span><span class="igrade">${i.grade||''}</span></div>
-        <div class="idetail">${i.room||''}${i.detail?' · '+i.detail:''}</div>
-      </div>
-      <div class="iact">
-        <button class="btn bsm" onclick="openModal('instructor','${i.id}')">수정</button>
-        <button class="btn bd" onclick="del('instructors','${i.id}')">삭제</button>
-      </div>
-    </div>`;
+  const todayItems = dedupeInst(allInst.filter(i =>
+    i.year && +i.year===today.getFullYear() && +i.month===today.getMonth()+1 && +i.day===today.getDate()
+  ));
 
-  // 오늘 수업: 날짜 일치 or 요일 일치(dayOfWeek 방식)
-  const todayItems = allInst.filter(i => {
-    if (i.year && i.month && i.day)
-      return +i.year===today.getFullYear() && +i.month===today.getMonth()+1 && +i.day===today.getDate();
-    return +i.dayOfWeek === dow;
-  });
+  const SUBJ_COLOR = { '공예수업':'camber', '연극수업':'cblue' };
+
+  // 협력수업 페이지 오늘 카드
   const te = document.getElementById('inst-today');
-  if (te) te.innerHTML = todayItems.length ? todayItems.map(card).join('') : '<div class="empty">오늘 외부강사 수업이 없습니다.</div>';
+  if (te) {
+    if (!todayItems.length) {
+      te.innerHTML = '<div class="empty">오늘 협력수업이 없습니다.</div>';
+    } else {
+      const subjMap = {};
+      todayItems.forEach(i => { if(!subjMap[i.subject]) subjMap[i.subject]=[]; subjMap[i.subject].push(i); });
+      const times = [...new Set(todayItems.map(i=>i.time))].sort();
+      te.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:300px;">
+        <thead><tr style="border-bottom:1.5px solid var(--border2);">
+          <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);width:110px;">시간</th>
+          ${Object.keys(subjMap).map(s=>`<th style="padding:6px 10px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);">${s}</th>`).join('')}
+        </tr></thead>
+        <tbody>
+          ${times.map(t => {
+            const row = todayItems.filter(i=>i.time===t);
+            const sr = {}; row.forEach(i=>{ if(!sr[i.subject]) sr[i.subject]=[]; sr[i.subject].push(i); });
+            return `<tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:7px 10px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;background:var(--surface2);">${t}</td>
+              ${Object.keys(subjMap).map(s => {
+                const c=sr[s]||[];
+                return c.length ? `<td style="padding:7px 10px;text-align:center;">${c.map(i=>`<span class="chip ${SUBJ_COLOR[s]||'cgray'}" style="font-size:11px;">${i.grade||''}</span>`).join(' ')}</td>`
+                                : `<td style="padding:7px 10px;"></td>`;
+              }).join('')}
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table></div>`;
+    }
+  }
+
+  // 홈 협력수업 카드 (간단 버전)
+  const homeInst = document.getElementById('home-inst');
+  if (homeInst) {
+    if (!todayItems.length) {
+      homeInst.innerHTML = '<div class="empty">오늘 협력수업이 없습니다.</div>';
+    } else {
+      const subjMap = {};
+      todayItems.forEach(i => { if(!subjMap[i.subject]) subjMap[i.subject]=[]; subjMap[i.subject].push(i); });
+      homeInst.innerHTML = Object.entries(subjMap).map(([subj, list]) => `
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+            <span class="chip ${SUBJ_COLOR[subj]||'cgray'}" style="font-size:11px;">${subj}</span>
+          </div>
+          ${list.map(i=>`
+            <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px;">
+              <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);min-width:100px;">${i.time||''}</span>
+              <span style="font-weight:500;color:var(--accent);">${i.grade||''}</span>
+              <span style="font-size:11px;color:var(--text3);">${i.room||''}</span>
+            </div>`).join('')}
+        </div>`).join('');
+    }
+  }
 
   renderInstMonth();
 }
@@ -577,10 +628,10 @@ function renderInstMonth() {
   const titleEl = document.getElementById('inst-month-title');
   if (titleEl) titleEl.textContent = `${instY}년 ${instM}월`;
 
-  const dated = allInst.filter(i => i.year && +i.year===instY && +i.month===instM);
+  const dated = dedupeInst(allInst.filter(i => i.year && +i.year===instY && +i.month===instM));
   const listEl = document.getElementById('inst-month-list');
   if (!listEl) return;
-  if (!dated.length) { listEl.innerHTML='<div class="empty">이달 등록된 외부강사 일정이 없습니다.</div>'; return; }
+  if (!dated.length) { listEl.innerHTML='<div class="empty">이달 등록된 협력수업 일정이 없습니다.</div>'; return; }
 
   const DOW_KR = ['일','월','화','수','목','금','토'];
   const SUBJ_COLOR = { '공예수업':'camber', '연극수업':'cblue' };
@@ -662,7 +713,7 @@ window.instPrev = () => { instM--; if(instM<1){instM=12;instY--;} renderInstMont
 window.instNext = () => { instM++; if(instM>12){instM=1;instY++;} renderInstMonth(); };
 
 
-/* ── 방과후·늘봄 ── */
+/* ── 늘봄학교 ── */
 // target 필드에서 학년 숫자 추출 (예: "초1-2" → [1,2], "초3-6" → [3,4,5,6], "초1" → [1])
 function parseGrades(target) {
   if (!target) return [];
@@ -772,7 +823,7 @@ window.openModal = async (type, id=null) => {
     const s=await getDoc(doc(db,cm[type],id));
     if (s.exists()) v=s.data();
   }
-  const lbl={notice:'공지사항',calendar:'학사일정',instructor:'외부강사',afterschool:'방과후·늘봄',link:'링크'};
+  const lbl={notice:'공지사항',calendar:'학사일정',instructor:'협력수업',afterschool:'늘봄학교',link:'링크'};
   document.getElementById('modal-title').textContent=(id?'수정':'추가')+' — '+lbl[type];
   document.getElementById('modal-body').innerHTML=buildForm(type,v);
   document.getElementById('edit-ov').classList.add('open');
@@ -873,7 +924,7 @@ function readCSVFile(file) {
   });
 }
 
-window.openUpload=sec=>{ upSec=sec; const lb={calendar:'학사일정',instructor:'외부강사',afterschool:'방과후·늘봄'}; document.getElementById('up-title').textContent=`CSV 업로드 — ${lb[sec]}`; document.getElementById('csv-input').value=''; document.getElementById('csv-preview').style.display='none'; document.getElementById('up-ov').classList.add('open'); document.getElementById('csv-input').onchange=async e=>{ const f=e.target.files[0]; if (!f) return; const txt=await readCSVFile(f); const lines=txt.split('\n').filter(l=>l.trim()&&!l.startsWith('#')).slice(0,6); const p=document.getElementById('csv-preview'); p.textContent=lines.join('\n'); p.style.display='block'; }; };
+window.openUpload=sec=>{ upSec=sec; const lb={calendar:'학사일정',instructor:'협력수업',afterschool:'늘봄학교'}; document.getElementById('up-title').textContent=`CSV 업로드 — ${lb[sec]}`; document.getElementById('csv-input').value=''; document.getElementById('csv-preview').style.display='none'; document.getElementById('up-ov').classList.add('open'); document.getElementById('csv-input').onchange=async e=>{ const f=e.target.files[0]; if (!f) return; const txt=await readCSVFile(f); const lines=txt.split('\n').filter(l=>l.trim()&&!l.startsWith('#')).slice(0,6); const p=document.getElementById('csv-preview'); p.textContent=lines.join('\n'); p.style.display='block'; }; };
 window.closeUpload=e=>{ if(e&&e.target!==document.getElementById('up-ov'))return; document.getElementById('up-ov').classList.remove('open'); upSec=null; };
 
 window.doUpload=async()=>{ const f=document.getElementById('csv-input').files[0]; if (!f){alert('파일을 선택하세요.');return;} const txt=await readCSVFile(f); const lines=txt.split('\n').filter(l=>l.trim()&&!l.startsWith('#')); if (lines.length<2){alert('데이터가 없습니다.');return;} const headers=lines[0].split(',').map(h=>h.replace(/"/g,'').trim()); const rows=lines.slice(1).map(line=>{ const vals=line.split(',').map(v=>v.replace(/^"|"$/g,'').trim()); const obj={}; headers.forEach((h,i)=>{obj[h]=vals[i]||'';}); return obj; }).filter(r=>Object.values(r).some(v=>v)); const cm={calendar:'calendar',instructor:'instructors',afterschool:'afterschool'}; const coll=cm[upSec]; const nf={calendar:['year','month','day'],instructor:['dayOfWeek','year','month','day'],afterschool:['day']}; rows.forEach(r=>{(nf[upSec]||[]).forEach(fld=>{if(r[fld])r[fld]=+r[fld];});}); const snap=await getDocs(collection(db,coll)); await Promise.all(snap.docs.map(d=>deleteDoc(doc(db,coll,d.id)))); await Promise.all(rows.map(r=>addDoc(collection(db,coll),r))); alert(`${rows.length}건 업로드 완료!`); closeUpload(); };
