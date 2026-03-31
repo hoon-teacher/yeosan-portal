@@ -971,7 +971,7 @@ window.saveModal = async () => {
     // 정규배정 충돌 체크
     const baseGrade = BASE_SCHEDULE[data.room]?.[dow]?.[periodNum];
     if (baseGrade) {
-      if (!confirm(`⚠ ${data.date} ${data.room} ${periodNum}교시는 정규배정(${baseGrade})이 있습니다.\n그래도 추가 예약하시겠습니까?`)) return;
+      if (!confirm(`⚠ ${data.date} ${data.room} ${periodNum}교시는 ${baseGrade} 수업 시간입니다.\n그래도 추가 예약하시겠습니까?`)) return;
     }
     // 추가예약 중복 체크
     const clash=allRooms.filter(r=>r.room===data.room&&r.date===data.date&&+r.period===periodNum);
@@ -1208,25 +1208,31 @@ function renderRooms() {
 
           // 정규배정
           const baseGrade = BASE_SCHEDULE[room]?.[dow]?.[period];
-          // 추가예약 (날짜 기반)
-          const extra = allRooms.filter(r=>r.room===room && r.date===ds && (+r.period===period || r.period===String(period)));
-
-          let cellHtml = '';
+          // 학년별 색상
+          const GRADE_COLOR = {
+            '1학년': {bg:'#EFF6FF', border:'#93C5FD', text:'#1D4ED8'},
+            '2학년': {bg:'#F0FDF4', border:'#86EFAC', text:'#15803D'},
+            '3학년': {bg:'#FFF7ED', border:'#FDB974', text:'#C2410C'},
+            '4학년': {bg:'#FAF5FF', border:'#C4B5FD', text:'#6D28D9'},
+            '5학년': {bg:'#FFF1F2', border:'#FDA4AF', text:'#BE123C'},
+            '6학년': {bg:'#FFFBEB', border:'#FCD34D', text:'#92400E'},
+          };
           if (baseGrade) {
-            cellHtml += `<div style="background:var(--surface2);border-radius:5px;padding:3px 6px;margin-bottom:2px;border-left:2px solid var(--text3);">
-              <div style="font-size:10px;color:var(--text3);">정규</div>
-              <div style="font-size:11px;font-weight:600;color:var(--text2);">${baseGrade}</div>
+            const c = GRADE_COLOR[baseGrade] || {bg:'var(--surface2)', border:'var(--border2)', text:'var(--text2)'};
+            cellHtml += `<div style="background:${c.bg};border-radius:5px;padding:4px 7px;margin-bottom:2px;border-left:3px solid ${c.border};">
+              <div style="font-size:12px;font-weight:600;color:${c.text};">${baseGrade}</div>
             </div>`;
           }
+          // 추가예약 (날짜 기반)
+          const extra = allRooms.filter(r=>r.room===room && r.date===ds && (+r.period===period || r.period===String(period)));
           extra.forEach(b => {
-            cellHtml += `<div style="background:var(--accent-lt);border-radius:5px;padding:3px 6px;margin-bottom:2px;border-left:2px solid var(--accent);">
-              <div style="font-size:10px;color:var(--accent);">추가예약</div>
-              <div style="font-size:11px;font-weight:600;color:var(--text);">${b.teacher||''}</div>
+            cellHtml += `<div style="background:var(--accent-lt);border-radius:5px;padding:4px 7px;margin-bottom:2px;border-left:3px solid var(--accent);">
+              <div style="font-size:12px;font-weight:600;color:var(--accent);">${b.teacher||''}</div>
               ${b.purpose?`<div style="font-size:10px;color:var(--text3);">${b.purpose}</div>`:''}
               <button class="btn bd" style="font-size:10px;padding:1px 5px;margin-top:2px;" onclick="delRoom('${b.id}')">취소</button>
             </div>`;
           });
-          if (!cellHtml) cellHtml = `<div style="color:var(--border);font-size:10px;text-align:center;">-</div>`;
+          if (!cellHtml) cellHtml = `<div style="color:var(--border2);font-size:10px;text-align:center;padding:4px 0;">-</div>`;
 
           return `<td class="${isT?'ttday':''}" style="padding:4px 6px;vertical-align:top;">${cellHtml}</td>`;
         }).join('')}
