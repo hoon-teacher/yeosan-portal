@@ -683,10 +683,30 @@ const TMPL={
 
 window.dlCSV=sec=>{ const t=TMPL[sec]; if (!t) return; let csv=t.comment+'\n'+t.headers.join(',')+'\n'; t.rows.forEach(r=>{csv+=r.map(v=>`"${v}"`).join(',')+'\n';}); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'})); a.download=`예시_${sec}.csv`; a.click(); };
 
-window.openUpload=sec=>{ upSec=sec; const lb={calendar:'학사일정',instructor:'외부강사',afterschool:'방과후·늘봄'}; document.getElementById('up-title').textContent=`CSV 업로드 — ${lb[sec]}`; document.getElementById('csv-input').value=''; document.getElementById('csv-preview').style.display='none'; document.getElementById('up-ov').classList.add('open'); document.getElementById('csv-input').onchange=e=>{ const f=e.target.files[0]; if (!f) return; const r=new FileReader(); r.onload=ev=>{ const lines=ev.target.result.split('\n').filter(l=>l.trim()&&!l.startsWith('#')).slice(0,6); const p=document.getElementById('csv-preview'); p.textContent=lines.join('\n'); p.style.display='block'; }; r.readAsText(f,'UTF-8'); }; };
+
+// 인코딩 자동감지 (UTF-8 BOM / UTF-8 / EUC-KR 모두 지원)
+function readCSVFile(file) {
+  return new Promise(resolve => {
+    const r = new FileReader();
+    r.onload = ev => {
+      const buf = ev.target.result;
+      const bytes = new Uint8Array(buf);
+      let encoding = 'UTF-8';
+      // UTF-8 BOM 없으면 EUC-KR 시도
+      if (!(bytes[0]===0xEF && bytes[1]===0xBB && bytes[2]===0xBF)) {
+        const u8 = new TextDecoder('UTF-8').decode(buf);
+        if (u8.includes('\uFFFD')) encoding = 'EUC-KR';
+      }
+      resolve(new TextDecoder(encoding).decode(buf).replace(/^\uFEFF/, ''));
+    };
+    r.readAsArrayBuffer(file);
+  });
+}
+
+window.openUpload=sec=>{ upSec=sec; const lb={calendar:'학사일정',instructor:'외부강사',afterschool:'방과후·늘봄'}; document.getElementById('up-title').textContent=`CSV 업로드 — ${lb[sec]}`; document.getElementById('csv-input').value=''; document.getElementById('csv-preview').style.display='none'; document.getElementById('up-ov').classList.add('open'); document.getElementById('csv-input').onchange=async e=>{ const f=e.target.files[0]; if (!f) return; const txt=await readCSVFile(f); const lines=txt.split('\n').filter(l=>l.trim()&&!l.startsWith('#')).slice(0,6); const p=document.getElementById('csv-preview'); p.textContent=lines.join('\n'); p.style.display='block'; }; };
 window.closeUpload=e=>{ if(e&&e.target!==document.getElementById('up-ov'))return; document.getElementById('up-ov').classList.remove('open'); upSec=null; };
 
-window.doUpload=async()=>{ const f=document.getElementById('csv-input').files[0]; if (!f){alert('파일을 선택하세요.');return;} const txt=await f.text(); const lines=txt.split('\n').filter(l=>l.trim()&&!l.startsWith('#')); if (lines.length<2){alert('데이터가 없습니다.');return;} const headers=lines[0].split(',').map(h=>h.replace(/"/g,'').trim()); const rows=lines.slice(1).map(line=>{ const vals=line.split(',').map(v=>v.replace(/^"|"$/g,'').trim()); const obj={}; headers.forEach((h,i)=>{obj[h]=vals[i]||'';}); return obj; }).filter(r=>Object.values(r).some(v=>v)); const cm={calendar:'calendar',instructor:'instructors',afterschool:'afterschool'}; const coll=cm[upSec]; const nf={calendar:['year','month','day'],instructor:['dayOfWeek']}; rows.forEach(r=>{(nf[upSec]||[]).forEach(f=>{if(r[f])r[f]=+r[f];});}); const snap=await getDocs(collection(db,coll)); await Promise.all(snap.docs.map(d=>deleteDoc(doc(db,coll,d.id)))); await Promise.all(rows.map(r=>addDoc(collection(db,coll),r))); alert(`${rows.length}건 업로드 완료!`); closeUpload(); };
+window.doUpload=async()=>{ const f=document.getElementById('csv-input').files[0]; if (!f){alert('파일을 선택하세요.');return;} const txt=await readCSVFile(f); const lines=txt.split('\n').filter(l=>l.trim()&&!l.startsWith('#')); if (lines.length<2){alert('데이터가 없습니다.');return;} const headers=lines[0].split(',').map(h=>h.replace(/"/g,'').trim()); const rows=lines.slice(1).map(line=>{ const vals=line.split(',').map(v=>v.replace(/^"|"$/g,'').trim()); const obj={}; headers.forEach((h,i)=>{obj[h]=vals[i]||'';}); return obj; }).filter(r=>Object.values(r).some(v=>v)); const cm={calendar:'calendar',instructor:'instructors',afterschool:'afterschool'}; const coll=cm[upSec]; const nf={calendar:['year','month','day'],instructor:['dayOfWeek'],afterschool:['day']}; rows.forEach(r=>{(nf[upSec]||[]).forEach(fld=>{if(r[fld])r[fld]=+r[fld];});}); const snap=await getDocs(collection(db,coll)); await Promise.all(snap.docs.map(d=>deleteDoc(doc(db,coll,d.id)))); await Promise.all(rows.map(r=>addDoc(collection(db,coll),r))); alert(`${rows.length}건 업로드 완료!`); closeUpload(); };
 </script>
 </body>
 </html>
