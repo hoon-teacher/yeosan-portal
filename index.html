@@ -1217,6 +1217,7 @@ function renderRooms() {
             '5학년': {bg:'#FFF1F2', border:'#FDA4AF', text:'#BE123C'},
             '6학년': {bg:'#FFFBEB', border:'#FCD34D', text:'#92400E'},
           };
+          let cellHtml = '';
           if (baseGrade) {
             const c = GRADE_COLOR[baseGrade] || {bg:'var(--surface2)', border:'var(--border2)', text:'var(--text2)'};
             cellHtml += `<div style="background:${c.bg};border-radius:5px;padding:4px 7px;margin-bottom:2px;border-left:3px solid ${c.border};">
