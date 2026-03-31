@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>여산초 교직원 포털</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:        #F5F3EE;
+  --surface:   #FFFFFF;
+  --surface2:  #F0EDE7;
+  --border:    rgba(0,0,0,0.09);
+  --border2:   rgba(0,0,0,0.18);
+  --text:      #1A1917;
+  --text2:     #6B6760;
+  --text3:     #A09C97;
+  --accent:    #2E5E3E;
+  --accent-lt: #E8F0EB;
+  --amber:     #B45309;
+  --amber-lt:  #FEF3C7;
+  --blue:      #1D4ED8;
+  --blue-lt:   #EFF6FF;
+  --red:       #B91C1C;
+  --red-lt:    #FEF2F2;
+  --r:         12px;
+  --rsm:       8px;
+  --shadow:    0 1px 3px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.07);
+}
+html { font-size: 15px; }
+body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.6; }
+
+/* layout */
+.shell { display: flex; min-height: 100vh; }
+.sidebar { width: 216px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.logo { padding: 22px 20px 18px; border-bottom: 1px solid var(--border); }
+.logo-school { font-size: 15px; font-weight: 600; color: var(--accent); letter-spacing: -0.02em; }
+.logo-sub  { font-size: 11px; color: var(--text3); margin-top: 2px; font-family: 'DM Mono', monospace; }
+.logo-date { font-size: 11px; color: var(--text3); margin-top: 5px; font-family: 'DM Mono', monospace; }
+.nav-label { font-size: 10px; font-weight: 600; letter-spacing: .08em; color: var(--text3); padding: 14px 20px 5px; text-transform: uppercase; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 20px; font-size: 13.5px; color: var(--text2); cursor: pointer; border-left: 2px solid transparent; transition: background .12s, color .12s; }
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: var(--accent-lt); color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+.nav-icon { font-size: 15px; width: 20px; text-align: center; }
+.main { flex: 1; padding: 32px 32px 80px; overflow-y: auto; max-width: 1000px; }
+
+/* pages */
+.page { display: none; }
+.page.active { display: block; animation: fi .18s ease; }
+@keyframes fi { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
+.ph { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.pt { font-size: 22px; font-weight: 600; letter-spacing: -.03em; }
+.pa { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* card */
+.card { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); padding: 20px 22px; margin-bottom: 16px; }
+.clabel { font-size: 10.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--text3); margin-bottom: 14px; }
+.crow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.crow .clabel { margin-bottom: 0; }
+
+/* buttons */
+.btn { display: inline-flex; align-items: center; gap: 5px; border-radius: var(--rsm); border: none; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; transition: opacity .15s, transform .1s; }
+.btn:active { transform: scale(.97); }
+.bp  { background: var(--accent); color: #fff; font-size: 13px; font-weight: 600; padding: 8px 15px; }
+.bp:hover { opacity: .85; }
+.bs  { background: var(--surface); color: var(--text2); font-size: 13px; padding: 8px 14px; border: 1px solid var(--border2); }
+.bs:hover { background: var(--surface2); }
+.bsm { font-size: 11.5px; padding: 4px 10px; background: var(--surface); color: var(--text2); border: 1px solid var(--border2); }
+.bsm:hover { background: var(--surface2); }
+.bd  { font-size: 11.5px; padding: 4px 10px; background: var(--red-lt); color: var(--red); }
+.blnk { font-size: 12px; color: var(--accent); background: none; border: none; cursor: pointer; font-family: 'Noto Sans KR', sans-serif; }
+.blnk:hover { text-decoration: underline; }
+
+/* home grid */
+.hgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 860px) { .hgrid { grid-template-columns: 1fr; } }
+
+/* notice */
+.nlist { list-style: none; }
+.nitem { display: flex; align-items: flex-start; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+.nitem:first-child { padding-top: 0; }
+.nitem:last-child { border-bottom: none; padding-bottom: 0; }
+.badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; margin-top: 2px; }
+.bu { background: var(--red-lt);   color: var(--red);   }
+.bi { background: var(--blue-lt);  color: var(--blue);  }
+.bd2{ background: var(--accent-lt);color: var(--accent);}
+.bn { background: var(--amber-lt); color: var(--amber); }
+.nbody { flex: 1; min-width: 0; }
+.ntext { font-size: 13.5px; line-height: 1.55; }
+.nmeta { font-size: 11px; color: var(--text3); margin-top: 3px; font-family: 'DM Mono', monospace; }
+.iact  { display: flex; gap: 5px; flex-shrink: 0; padding-top: 2px; }
+
+/* calendar */
+.calwrap { display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: start; }
+@media (max-width: 640px) { .calwrap { grid-template-columns: 1fr; } }
+.calnr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.caltitle { font-size: 14px; font-weight: 600; }
+.calbtn { background: none; border: 1px solid var(--border2); border-radius: 6px; padding: 2px 11px; cursor: pointer; font-size: 13px; color: var(--text2); }
+.calbtn:hover { background: var(--surface2); }
+.calgrid { display: grid; grid-template-columns: repeat(7, 36px); gap: 2px; }
+.cdn { font-size: 10px; text-align: center; padding: 3px 0 7px; color: var(--text3); font-weight: 600; }
+.cdn:first-child { color: #DC2626; }
+.cdn:last-child  { color: #2563EB; }
+.cc { width: 36px; height: 36px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; font-size: 12px; color: var(--text2); position: relative; transition: background .1s; }
+.cc:hover { background: var(--surface2); }
+.cc.today { background: var(--accent); color: #fff !important; font-weight: 600; }
+.cc.hev::after { content: ''; width: 4px; height: 4px; border-radius: 50%; background: var(--amber); position: absolute; bottom: 4px; }
+.cc.today.hev::after { background: rgba(255,255,255,.7); }
+.cc.dim { opacity: .3; }
+.cc.sun { color: #DC2626; }
+.cc.sat { color: #2563EB; }
+.evitem { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.evitem:first-child { padding-top: 0; }
+.evitem:last-child { border-bottom: none; }
+.evday { min-width: 36px; text-align: center; background: var(--accent-lt); color: var(--accent); border-radius: 7px; padding: 4px 0; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+.evname   { font-size: 13.5px; font-weight: 500; }
+.evdetail { font-size: 11px; color: var(--text3); margin-top: 1px; }
+
+/* instructor */
+.icard { border: 1px solid var(--border); border-radius: var(--rsm); padding: 12px 15px; margin-bottom: 9px; display: flex; align-items: flex-start; gap: 12px; }
+.icard:last-child { margin-bottom: 0; }
+.itime { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text3); min-width: 90px; padding-top: 2px; }
+.ibody { flex: 1; }
+.irow  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.isub  { font-size: 14px; font-weight: 600; }
+.igrade { font-size: 10px; padding: 2px 8px; border-radius: 20px; background: var(--accent-lt); color: var(--accent); font-weight: 600; }
+.idetail { font-size: 12px; color: var(--text2); margin-top: 3px; }
+.dowlbl { font-size: 10.5px; font-weight: 600; color: var(--text3); letter-spacing: .06em; margin: 14px 0 7px; text-transform: uppercase; }
+.dowlbl:first-child { margin-top: 0; }
+
+/* afterschool */
+.tttabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.tttab { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border2); background: transparent; font-size: 12.5px; color: var(--text2); cursor: pointer; font-family: 'Noto Sans KR', sans-serif; transition: all .12s; }
+.tttab:hover { background: var(--surface2); }
+.tttab.active { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+.ttwrap { overflow-x: auto; }
+.tt { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 400px; }
+.tt th { padding: 7px 10px; text-align: center; font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: .05em; border-bottom: 1.5px solid var(--border2); }
+.tt td { padding: 8px 10px; text-align: center; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.tt tr:last-child td { border-bottom: none; }
+.tt td:first-child { text-align: left; font-size: 12px; color: var(--text2); white-space: nowrap; }
+.chip { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 500; }
+.cblue  { background: var(--blue-lt);  color: var(--blue);  }
+.cgreen { background: var(--accent-lt);color: var(--accent);}
+.camber { background: var(--amber-lt); color: var(--amber); }
+.ttday  { background: var(--surface2); }
+
+/* links */
+.lgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.lcard { border: 1px solid var(--border); border-radius: var(--rsm); padding: 15px; text-decoration: none; color: inherit; display: block; transition: all .15s; background: var(--surface); }
+.lcard:hover { border-color: var(--accent); background: var(--accent-lt); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+.licon { width: 34px; height: 34px; border-radius: 8px; background: var(--accent-lt); display: flex; align-items: center; justify-content: center; font-size: 17px; margin-bottom: 9px; }
+.lname { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+.ldesc { font-size: 11.5px; color: var(--text2); }
+.ltag  { font-size: 10px; color: var(--text3); margin-top: 8px; font-family: 'DM Mono', monospace; }
+.ledit { display: flex; gap: 5px; margin-top: 9px; }
+.qlnk { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); text-decoration: none; color: inherit; }
+.qlnk:last-child { border-bottom: none; }
+.qlnk:hover .lname { color: var(--accent); }
+.qicon { font-size: 18px; width: 28px; text-align: center; }
+
+/* urgent banner */
+.ubanner { margin-bottom: 16px; padding: 13px 16px; border-radius: var(--rsm); background: var(--red-lt); border-left: 3px solid var(--red); }
+.ulbl  { font-size: 11px; font-weight: 700; color: var(--red); margin-bottom: 3px; }
+.utext { font-size: 13.5px; color: #7f1d1d; }
+
+.empty { padding: 28px 0; text-align: center; color: var(--text3); font-size: 13.5px; }
+
+/* modal */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.42); display: none; align-items: center; justify-content: center; z-index: 999; padding: 20px; }
+.overlay.open { display: flex; }
+.modal { background: var(--surface); border-radius: var(--r); box-shadow: 0 8px 40px rgba(0,0,0,.18); width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+.mhead { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 0; }
+.mtitle { font-size: 16px; font-weight: 600; }
+.mclose { background: none; border: none; font-size: 19px; cursor: pointer; color: var(--text3); }
+.mbody { padding: 18px 22px; }
+.mfoot { padding: 0 22px 18px; display: flex; gap: 8px; justify-content: flex-end; }
+.fg { margin-bottom: 14px; }
+.fg label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 5px; }
+.fg input, .fg select, .fg textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--border2); border-radius: var(--rsm); font-family: 'Noto Sans KR', sans-serif; font-size: 14px; color: var(--text); background: var(--surface); outline: none; transition: border-color .15s; }
+.fg input:focus, .fg select:focus, .fg textarea:focus { border-color: var(--accent); }
+.fg textarea { resize: vertical; min-height: 80px; }
+
+/* mobile nav */
+.mnav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); z-index: 100; }
+.mni { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 4px; cursor: pointer; font-size: 10px; color: var(--text3); }
+.mni.active { color: var(--accent); font-weight: 600; }
+.mni span { font-size: 21px; }
+@media (max-width: 700px) { .sidebar { display: none; } .main { padding: 20px 16px 80px; } .mnav { display: flex; } }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-school">🌿 여산초등학교</div>
+      <div class="logo-sub">교직원 포털</div>
+      <div class="logo-date" id="sb-date"></div>
+    </div>
+    <div class="nav-label">메뉴</div>
+    <div class="nav-item active" data-p="home"        onclick="go('home',this)"><span class="nav-icon">🏠</span> 홈</div>
+    <div class="nav-item"        data-p="notice"      onclick="go('notice',this)"><span class="nav-icon">📢</span> 공지사항</div>
+    <div class="nav-item"        data-p="calendar"    onclick="go('calendar',this)"><span class="nav-icon">📅</span> 학사일정</div>
+    <div class="nav-item"        data-p="instructor"  onclick="go('instructor',this)"><span class="nav-icon">👨‍🏫</span> 외부강사</div>
+    <div class="nav-item"        data-p="afterschool" onclick="go('afterschool',this)"><span class="nav-icon">🌙</span> 방과후·늘봄</div>
+    <div class="nav-item"        data-p="links"       onclick="go('links',this)"><span class="nav-icon">🔗</span> 공유 링크</div>
+  </aside>
+
+  <main class="main">
+
+    <!-- 홈 -->
+    <div class="page active" id="page-home">
+      <div class="ph">
+        <div class="pt">오늘의 현황</div>
+        <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;" id="home-date"></div>
+      </div>
+      <div id="urgent-wrap"></div>
+      <div class="hgrid">
+        <div class="card">
+          <div class="crow"><span class="clabel">📢 공지사항</span><button class="blnk" onclick="go('notice',document.querySelector('[data-p=notice]'))">전체보기 →</button></div>
+          <ul class="nlist" id="home-notices"></ul>
+        </div>
+        <div class="card" style="grid-row:span 2;">
+          <div class="crow"><span class="clabel">📅 학사일정</span><button class="blnk" onclick="go('calendar',document.querySelector('[data-p=calendar]'))">전체보기 →</button></div>
+          <div class="calnr">
+            <button class="calbtn" onclick="hPrev()">◂</button>
+            <span class="caltitle" id="h-cal-title"></span>
+            <button class="calbtn" onclick="hNext()">▸</button>
+          </div>
+          <div class="calgrid" id="h-cal-grid"></div>
+          <div id="h-cal-events" style="margin-top:14px;"></div>
+        </div>
+        <div class="card">
+          <div class="clabel">🔗 빠른 링크</div>
+          <div id="home-links"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 공지사항 -->
+    <div class="page" id="page-notice">
+      <div class="ph">
+        <div class="pt">공지사항</div>
+        <div class="pa"><button class="btn bp" onclick="openModal('notice')">+ 추가</button></div>
+      </div>
+      <div class="card"><ul class="nlist" id="notice-list"></ul></div>
+    </div>
+
+    <!-- 학사일정 -->
+    <div class="page" id="page-calendar">
+      <div class="ph">
+        <div class="pt">학사일정</div>
+        <div class="pa">
+          <button class="btn bs" onclick="dlCSV('calendar')">⬇ 예시 CSV</button>
+          <button class="btn bs" onclick="openUpload('calendar')">⬆ CSV 업로드</button>
+          <button class="btn bp" onclick="openModal('calendar')">+ 추가</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="calwrap">
+          <div>
+            <div class="calnr">
+              <button class="calbtn" onclick="mPrev()">◂</button>
+              <span class="caltitle" id="m-cal-title"></span>
+              <button class="calbtn" onclick="mNext()">▸</button>
+            </div>
+            <div class="calgrid" id="m-cal-grid"></div>
+          </div>
+          <div>
+            <div class="clabel" style="margin-bottom:12px;">이달 주요 일정</div>
+            <div id="m-cal-events"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 외부강사 -->
+    <div class="page" id="page-instructor">
+      <div class="ph">
+        <div class="pt">외부강사 수업</div>
+        <div class="pa">
+          <button class="btn bs" onclick="dlCSV('instructor')">⬇ 예시 CSV</button>
+          <button class="btn bs" onclick="openUpload('instructor')">⬆ CSV 업로드</button>
+          <button class="btn bp" onclick="openModal('instructor')">+ 추가</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="clabel" id="inst-lbl"></div>
+        <div id="inst-today"></div>
+      </div>
+      <div class="card" style="margin-top:0;">
+        <div class="clabel">이번 주 전체 일정</div>
+        <div id="inst-week"></div>
+      </div>
+    </div>
+
+    <!-- 방과후·늘봄 -->
+    <div class="page" id="page-afterschool">
+      <div class="ph">
+        <div class="pt">방과후·늘봄</div>
+        <div class="pa">
+          <button class="btn bs" onclick="dlCSV('afterschool')">⬇ 예시 CSV</button>
+          <button class="btn bs" onclick="openUpload('afterschool')">⬆ CSV 업로드</button>
+          <button class="btn bp" onclick="openModal('afterschool')">+ 추가</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="tttabs" id="tt-tabs"></div>
+        <div class="ttwrap"><table class="tt"><thead><tr id="tt-head"></tr></thead><tbody id="tt-body"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- 공유 링크 -->
+    <div class="page" id="page-links">
+      <div class="ph">
+        <div class="pt">공유 링크</div>
+        <button class="btn bp" onclick="openModal('link')">+ 추가</button>
+      </div>
+      <div class="card"><div class="lgrid" id="links-grid"></div></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- 모바일 네비 -->
+<nav class="mnav">
+  <div class="mni active" data-p="home"        onclick="go('home',this)"><span>🏠</span>홈</div>
+  <div class="mni"        data-p="notice"      onclick="go('notice',this)"><span>📢</span>공지</div>
+  <div class="mni"        data-p="calendar"    onclick="go('calendar',this)"><span>📅</span>일정</div>
+  <div class="mni"        data-p="instructor"  onclick="go('instructor',this)"><span>👨‍🏫</span>강사</div>
+  <div class="mni"        data-p="afterschool" onclick="go('afterschool',this)"><span>🌙</span>방과후</div>
+  <div class="mni"        data-p="links"       onclick="go('links',this)"><span>🔗</span>링크</div>
+</nav>
+
+<!-- 편집 모달 -->
+<div class="overlay" id="edit-ov" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="mhead"><div class="mtitle" id="modal-title"></div><button class="mclose" onclick="closeModal()">✕</button></div>
+    <div class="mbody" id="modal-body"></div>
+    <div class="mfoot"><button class="btn bs" onclick="closeModal()">취소</button><button class="btn bp" onclick="saveModal()">저장</button></div>
+  </div>
+</div>
+
+<!-- CSV 업로드 모달 -->
+<div class="overlay" id="up-ov" onclick="closeUpload(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:460px;">
+    <div class="mhead"><div class="mtitle" id="up-title"></div><button class="mclose" onclick="closeUpload()">✕</button></div>
+    <div class="mbody">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">예시 CSV를 다운로드한 뒤 내용을 채워 업로드하세요.<br><strong>⚠ 업로드 시 해당 섹션 기존 데이터를 모두 교체합니다.</strong></p>
+      <input type="file" id="csv-input" accept=".csv" style="width:100%;">
+      <pre id="csv-preview" style="display:none;margin-top:12px;font-size:11px;color:var(--text2);background:var(--surface2);padding:10px;border-radius:6px;white-space:pre-wrap;"></pre>
+    </div>
+    <div class="mfoot"><button class="btn bs" onclick="closeUpload()">취소</button><button class="btn bp" onclick="doUpload()">업로드</button></div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, doc, addDoc, getDoc, updateDoc,
+         deleteDoc, getDocs, onSnapshot, orderBy, query,
+         serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+/* ════════════════════════════════════
+   ★ Firebase 설정 — 여기만 교체하세요
+════════════════════════════════════ */
+const CFG = {
+  apiKey:            "AIzaSyBBuwVXzd04_ZLNdtnOFvgQyRiTCCaDCDQ",
+  authDomain:        "yeosan-2026.firebaseapp.com",
+  projectId:         "yeosan-2026",
+  storageBucket:     "yeosan-2026.firebasestorage.app",
+  messagingSenderId: "742004030656",
+  appId:             "1:742004030656:web:f85c256d1a334af5f54125"
+};
+
+const fb = initializeApp(CFG);
+const db = getFirestore(fb);
+
+/* ── 상태 ── */
+const today = new Date();
+const DAYS  = ['일','월','화','수','목','금','토'];
+const BLBL  = { urgent:'긴급', info:'안내', done:'완료', notice:'공지' };
+const BCLS  = { urgent:'bu', info:'bi', done:'bd2', notice:'bn' };
+const CHIP  = { blue:'cblue', green:'cgreen', amber:'camber' };
+
+let calY=today.getFullYear(), calM=today.getMonth()+1;
+let hY=today.getFullYear(),   hM=today.getMonth()+1;
+let allEv=[], allInst=[], allAfter=[], allLinks=[];
+let curModal=null, editId=null, upSec=null, curTab='전체';
+
+/* ── 날짜 ── */
+const fmt = d=>`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${DAYS[d.getDay()]})`;
+document.getElementById('sb-date').textContent   = fmt(today);
+document.getElementById('home-date').textContent = fmt(today);
+
+/* ── 네비 ── */
+window.go = (pid, el) => {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item,.mni').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+pid)?.classList.add('active');
+  document.querySelectorAll(`[data-p="${pid}"]`).forEach(n=>n.classList.add('active'));
+};
+
+/* ── Firestore 구독 ── */
+onSnapshot(query(collection(db,'notices'), orderBy('createdAt','desc')), snap => {
+  const list = snap.docs.map(d=>({id:d.id,...d.data()}));
+  renderNotices('notice-list', list, true);
+  renderNotices('home-notices', list.slice(0,4), false);
+  const urg = list.find(n=>n.badge==='urgent');
+  document.getElementById('urgent-wrap').innerHTML = urg
+    ? `<div class="ubanner"><div class="ulbl">📌 긴급 공지</div><div class="utext">${urg.text}</div></div>` : '';
+});
+
+onSnapshot(collection(db,'calendar'), snap => {
+  allEv = snap.docs.map(d=>({id:d.id,...d.data()}));
+  drawCal('h-cal-title','h-cal-grid','h-cal-events', hY, hM);
+  drawCal('m-cal-title','m-cal-grid','m-cal-events', calY, calM);
+});
+
+onSnapshot(collection(db,'instructors'), snap => {
+  allInst = snap.docs.map(d=>({id:d.id,...d.data()}));
+  renderInst();
+});
+
+onSnapshot(collection(db,'afterschool'), snap => {
+  allAfter = snap.docs.map(d=>({id:d.id,...d.data()}));
+  renderAfter(curTab);
+});
+
+onSnapshot(collection(db,'links'), snap => {
+  allLinks = snap.docs.map(d=>({id:d.id,...d.data()}));
+  renderLinks('links-grid', allLinks, true);
+  renderQuickLinks(allLinks.slice(0,5));
+});
+
+/* ── 공지 ── */
+function renderNotices(id, list, edit) {
+  const el=document.getElementById(id); if (!el) return;
+  if (!list.length) { el.innerHTML='<div class="empty">등록된 공지사항이 없습니다.</div>'; return; }
+  el.innerHTML=list.map(n=>`
+    <li class="nitem">
+      <span class="badge ${BCLS[n.badge]||'bn'}">${BLBL[n.badge]||n.badge}</span>
+      <div class="nbody">
+        <div class="ntext">${n.text||''}</div>
+        <div class="nmeta">${n.date||''} · ${n.author||''}</div>
+      </div>
+      ${edit?`<div class="iact">
+        <button class="btn bsm" onclick="openModal('notice','${n.id}')">수정</button>
+        <button class="btn bd" onclick="del('notices','${n.id}')">삭제</button>
+      </div>`:''}
+    </li>`).join('');
+}
+
+/* ── 달력 ── */
+function drawCal(tid, gid, eid, y, m) {
+  const fd=new Date(y,m-1,1).getDay(), dim=new Date(y,m,0).getDate(), dip=new Date(y,m-1,0).getDate();
+  const el=document.getElementById(tid); if (el) el.textContent=`${y}년 ${m}월`;
+  const evs=allEv.filter(e=>+e.year===y&&+e.month===m);
+  const evD=new Set(evs.map(e=>+e.day));
+  let c=DAYS.map(d=>`<div class="cdn">${d}</div>`).join('');
+  for (let i=0;i<fd;i++) c+=`<div class="cc dim">${dip-fd+1+i}</div>`;
+  for (let d=1;d<=dim;d++) {
+    const isT=d===today.getDate()&&m===today.getMonth()+1&&y===today.getFullYear();
+    const dow=(fd+d-1)%7;
+    const cls=['cc',isT?'today':'',evD.has(d)?'hev':'',dow===0?'sun':'',dow===6?'sat':''].filter(Boolean).join(' ');
+    c+=`<div class="${cls}">${d}</div>`;
+  }
+  for (let d=1;d<=42-fd-dim;d++) c+=`<div class="cc dim">${d}</div>`;
+  const g=document.getElementById(gid); if (g) g.innerHTML=c;
+  const ev=document.getElementById(eid); if (!ev) return;
+  if (!evs.length) { ev.innerHTML='<div class="empty">이달 등록된 일정이 없습니다.</div>'; return; }
+  ev.innerHTML=evs.sort((a,b)=>+a.day-+b.day).map(e=>`
+    <div class="evitem">
+      <div class="evday">${e.day}일</div>
+      <div style="flex:1;"><div class="evname">${e.name}</div>${e.detail?`<div class="evdetail">${e.detail}</div>`:''}</div>
+      <div class="iact">
+        <button class="btn bsm" onclick="openModal('calendar','${e.id}')">수정</button>
+        <button class="btn bd" onclick="del('calendar','${e.id}')">삭제</button>
+      </div>
+    </div>`).join('');
+}
+
+window.mPrev=()=>{calM--;if(calM<1){calM=12;calY--;}drawCal('m-cal-title','m-cal-grid','m-cal-events',calY,calM);};
+window.mNext=()=>{calM++;if(calM>12){calM=1;calY++;}drawCal('m-cal-title','m-cal-grid','m-cal-events',calY,calM);};
+window.hPrev=()=>{hM--;if(hM<1){hM=12;hY--;}drawCal('h-cal-title','h-cal-grid','h-cal-events',hY,hM);};
+window.hNext=()=>{hM++;if(hM>12){hM=1;hY++;}drawCal('h-cal-title','h-cal-grid','h-cal-events',hY,hM);};
+
+/* ── 외부강사 ── */
+function renderInst() {
+  const dow=today.getDay();
+  const lbl=document.getElementById('inst-lbl');
+  if (lbl) lbl.textContent=`오늘 (${today.getMonth()+1}/${today.getDate()} ${DAYS[dow]}) 수업`;
+  const card=i=>`
+    <div class="icard">
+      <div class="itime">${i.time}</div>
+      <div class="ibody">
+        <div class="irow"><span class="isub">${i.subject}</span><span class="igrade">${i.grade}</span></div>
+        <div class="idetail">${i.room||''}${i.detail?' · '+i.detail:''}</div>
+      </div>
+      <div class="iact">
+        <button class="btn bsm" onclick="openModal('instructor','${i.id}')">수정</button>
+        <button class="btn bd" onclick="del('instructors','${i.id}')">삭제</button>
+      </div>
+    </div>`;
+  const te=document.getElementById('inst-today');
+  if (te) { const l=allInst.filter(i=>+i.dayOfWeek===dow); te.innerHTML=l.length?l.map(card).join(''):'<div class="empty">오늘 외부강사 수업이 없습니다.</div>'; }
+  let wk='';
+  [1,2,3,4,5].forEach(d=>{ const l=allInst.filter(i=>+i.dayOfWeek===d); if (!l.length) return; wk+=`<div class="dowlbl">${DAYS[d]}요일</div>${l.map(card).join('')}`; });
+  const we=document.getElementById('inst-week');
+  if (we) we.innerHTML=wk||'<div class="empty">이번 주 외부강사 일정이 없습니다.</div>';
+}
+
+/* ── 방과후 ── */
+window.renderAfter = (tab) => {
+  curTab=tab;
+  const cats=['전체',...new Set(allAfter.map(r=>r.category||'기타'))];
+  const te=document.getElementById('tt-tabs');
+  if (te) te.innerHTML=cats.map(c=>`<button class="tttab ${c===tab?'active':''}" onclick="renderAfter('${c}')">${c}</button>`).join('');
+  const rows=tab==='전체'?allAfter:allAfter.filter(r=>r.category===tab);
+  const dow=today.getDay(), cm={1:1,2:2,3:3,4:4,5:5}, tc=cm[dow]||-1;
+  const he=document.getElementById('tt-head');
+  if (he) he.innerHTML=['프로그램','월','화','수','목','금'].map((d,i)=>`<th class="${i===tc?'ttday':''}">${d}</th>`).join('');
+  const be=document.getElementById('tt-body'); if (!be) return;
+  if (!rows.length) { be.innerHTML='<tr><td colspan="6" class="empty">등록된 프로그램이 없습니다.</td></tr>'; return; }
+  be.innerHTML=rows.map(r=>`
+    <tr>
+      <td>${r.label} <span style="margin-left:4px;">
+        <button class="btn bsm" onclick="openModal('afterschool','${r.id}')">수정</button>
+        <button class="btn bd" onclick="del('afterschool','${r.id}')">삭제</button>
+      </span></td>
+      ${['mon','tue','wed','thu','fri'].map((k,i)=>`<td class="${i+1===tc?'ttday':''}">${r[k]?`<span class="chip ${CHIP[r.color]||'cblue'}">${r[k]}</span>`:''}</td>`).join('')}
+    </tr>`).join('');
+};
+
+/* ── 링크 ── */
+function renderLinks(id, links, edit) {
+  const el=document.getElementById(id); if (!el) return;
+  if (!links.length) { el.innerHTML='<div class="empty">등록된 링크가 없습니다.</div>'; return; }
+  el.innerHTML=links.map(l=>`
+    <a class="lcard" href="${l.url}" target="_blank" rel="noopener">
+      <div class="licon">${l.icon||'🔗'}</div>
+      <div class="lname">${l.name}</div>
+      <div class="ldesc">${l.desc||''}</div>
+      <div class="ltag">바로가기 ↗</div>
+      ${edit?`<div class="ledit" onclick="event.preventDefault()">
+        <button class="btn bsm" onclick="openModal('link','${l.id}')">수정</button>
+        <button class="btn bd" onclick="del('links','${l.id}')">삭제</button>
+      </div>`:''}
+    </a>`).join('');
+}
+function renderQuickLinks(links) {
+  const el=document.getElementById('home-links'); if (!el) return;
+  if (!links.length) { el.innerHTML='<div class="empty">등록된 링크가 없습니다.</div>'; return; }
+  el.innerHTML=links.map(l=>`
+    <a class="qlnk" href="${l.url}" target="_blank" rel="noopener">
+      <span class="qicon">${l.icon||'🔗'}</span>
+      <div><div class="lname">${l.name}</div><div style="font-size:11px;color:var(--text3);">${l.desc||''}</div></div>
+    </a>`).join('');
+}
+
+/* ── 모달 ── */
+window.openModal = async (type, id=null) => {
+  curModal=type; editId=id;
+  let v={};
+  if (id) {
+    const cm={notice:'notices',calendar:'calendar',instructor:'instructors',afterschool:'afterschool',link:'links'};
+    const s=await getDoc(doc(db,cm[type],id));
+    if (s.exists()) v=s.data();
+  }
+  const lbl={notice:'공지사항',calendar:'학사일정',instructor:'외부강사',afterschool:'방과후·늘봄',link:'링크'};
+  document.getElementById('modal-title').textContent=(id?'수정':'추가')+' — '+lbl[type];
+  document.getElementById('modal-body').innerHTML=buildForm(type,v);
+  document.getElementById('edit-ov').classList.add('open');
+};
+
+function buildForm(t,v={}) {
+  if (t==='notice') return `
+    <div class="fg"><label>배지</label><select id="f-badge">${['urgent','info','done','notice'].map(b=>`<option value="${b}" ${v.badge===b?'selected':''}>${BLBL[b]}</option>`).join('')}</select></div>
+    <div class="fg"><label>내용</label><textarea id="f-text">${v.text||''}</textarea></div>
+    <div class="fg"><label>날짜 (예: 2026.04.01)</label><input id="f-date" value="${v.date||''}"></div>
+    <div class="fg"><label>작성자</label><input id="f-author" value="${v.author||''}"></div>`;
+  if (t==='calendar') return `
+    <div class="fg"><label>연도</label><input type="number" id="f-year" value="${v.year||today.getFullYear()}"></div>
+    <div class="fg"><label>월</label><input type="number" id="f-month" min="1" max="12" value="${v.month||today.getMonth()+1}"></div>
+    <div class="fg"><label>일</label><input type="number" id="f-day" min="1" max="31" value="${v.day||''}"></div>
+    <div class="fg"><label>일정명</label><input id="f-name" value="${v.name||''}"></div>
+    <div class="fg"><label>상세 (선택)</label><input id="f-detail" value="${v.detail||''}"></div>`;
+  if (t==='instructor') return `
+    <div class="fg"><label>요일</label><select id="f-dow">${[['1','월'],['2','화'],['3','수'],['4','목'],['5','금']].map(([val,lb])=>`<option value="${val}" ${String(v.dayOfWeek)===val?'selected':''}>${lb}요일</option>`).join('')}</select></div>
+    <div class="fg"><label>시간 (예: 09:00~09:40)</label><input id="f-time" value="${v.time||''}"></div>
+    <div class="fg"><label>수업명</label><input id="f-subject" placeholder="체육 (스포츠 강사)" value="${v.subject||''}"></div>
+    <div class="fg"><label>학년</label><input id="f-grade" value="${v.grade||''}"></div>
+    <div class="fg"><label>장소</label><input id="f-room" value="${v.room||''}"></div>
+    <div class="fg"><label>상세 (선택)</label><input id="f-detail" value="${v.detail||''}"></div>`;
+  if (t==='afterschool') return `
+    <div class="fg"><label>구분</label><input id="f-category" placeholder="늘봄 / 방과후" value="${v.category||''}"></div>
+    <div class="fg"><label>프로그램명</label><input id="f-label" value="${v.label||''}"></div>
+    <div class="fg"><label>월요일</label><input id="f-mon" value="${v.mon||''}"></div>
+    <div class="fg"><label>화요일</label><input id="f-tue" value="${v.tue||''}"></div>
+    <div class="fg"><label>수요일</label><input id="f-wed" value="${v.wed||''}"></div>
+    <div class="fg"><label>목요일</label><input id="f-thu" value="${v.thu||''}"></div>
+    <div class="fg"><label>금요일</label><input id="f-fri" value="${v.fri||''}"></div>
+    <div class="fg"><label>칩 색상</label><select id="f-color"><option value="blue" ${v.color==='blue'?'selected':''}>파랑</option><option value="green" ${v.color==='green'?'selected':''}>초록</option><option value="amber" ${v.color==='amber'?'selected':''}>주황</option></select></div>`;
+  if (t==='link') return `
+    <div class="fg"><label>아이콘 (이모지)</label><input id="f-icon" value="${v.icon||'📊'}" style="max-width:80px;"></div>
+    <div class="fg"><label>이름</label><input id="f-name" value="${v.name||''}"></div>
+    <div class="fg"><label>설명 (선택)</label><input id="f-desc" value="${v.desc||''}"></div>
+    <div class="fg"><label>URL</label><input id="f-url" value="${v.url||'https://docs.google.com/spreadsheets/d/'}"></div>`;
+  return '';
+}
+
+window.saveModal = async () => {
+  const g=id=>document.getElementById(id)?.value?.trim()||'';
+  let data={}, coll='';
+  if (curModal==='notice')      { data={badge:g('f-badge'),text:g('f-text'),date:g('f-date'),author:g('f-author'),createdAt:serverTimestamp()}; coll='notices';     if (!data.text){alert('내용을 입력하세요.');return;} }
+  else if (curModal==='calendar')   { data={year:+g('f-year'),month:+g('f-month'),day:+g('f-day'),name:g('f-name'),detail:g('f-detail')}; coll='calendar';    if (!data.name||!data.day){alert('날짜와 일정명을 입력하세요.');return;} }
+  else if (curModal==='instructor') { data={dayOfWeek:+g('f-dow'),time:g('f-time'),subject:g('f-subject'),grade:g('f-grade'),room:g('f-room'),detail:g('f-detail')}; coll='instructors'; if (!data.subject){alert('수업명을 입력하세요.');return;} }
+  else if (curModal==='afterschool'){ data={category:g('f-category'),label:g('f-label'),mon:g('f-mon'),tue:g('f-tue'),wed:g('f-wed'),thu:g('f-thu'),fri:g('f-fri'),color:g('f-color')}; coll='afterschool'; if (!data.label){alert('프로그램명을 입력하세요.');return;} }
+  else if (curModal==='link')       { data={icon:g('f-icon'),name:g('f-name'),desc:g('f-desc'),url:g('f-url')}; coll='links'; if (!data.name||!data.url){alert('이름과 URL을 입력하세요.');return;} }
+  if (editId) await updateDoc(doc(db,coll,editId),data);
+  else        await addDoc(collection(db,coll),data);
+  closeModal();
+};
+
+window.closeModal=(e)=>{ if(e&&e.target!==document.getElementById('edit-ov'))return; document.getElementById('edit-ov').classList.remove('open'); curModal=null;editId=null; };
+window.del=async(coll,id)=>{ if(!confirm('삭제하시겠습니까?'))return; await deleteDoc(doc(db,coll,id)); };
+
+/* ── CSV ── */
+const TMPL={
+  calendar:   {comment:'# year,month,day,name,detail',    headers:['year','month','day','name','detail'],                       rows:[[2026,4,16,'세월호 10주기 추모 활동','전 학급 학습지'],[2026,5,5,'어린이날','휴업일']]},
+  instructor: {comment:'# dayOfWeek: 1=월 2=화 3=수 4=목 5=금', headers:['dayOfWeek','time','subject','grade','room','detail'],rows:[[1,'09:00~09:40','체육 (스포츠 강사)','3학년','체육관','전래놀이 수업'],[3,'14:00~14:40','미술 (공예 강사)','2학년','미술실','']]},
+  afterschool:{comment:'# color: blue / green / amber',   headers:['category','label','mon','tue','wed','thu','fri','color'],   rows:[['늘봄','늘봄 1반','독서','','독서','','독서','green'],['방과후','컴퓨터','','컴퓨터','','컴퓨터','','blue']]}
+};
+
+window.dlCSV=sec=>{ const t=TMPL[sec]; if (!t) return; let csv=t.comment+'\n'+t.headers.join(',')+'\n'; t.rows.forEach(r=>{csv+=r.map(v=>`"${v}"`).join(',')+'\n';}); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'})); a.download=`예시_${sec}.csv`; a.click(); };
+
+window.openUpload=sec=>{ upSec=sec; const lb={calendar:'학사일정',instructor:'외부강사',afterschool:'방과후·늘봄'}; document.getElementById('up-title').textContent=`CSV 업로드 — ${lb[sec]}`; document.getElementById('csv-input').value=''; document.getElementById('csv-preview').style.display='none'; document.getElementById('up-ov').classList.add('open'); document.getElementById('csv-input').onchange=e=>{ const f=e.target.files[0]; if (!f) return; const r=new FileReader(); r.onload=ev=>{ const lines=ev.target.result.split('\n').filter(l=>l.trim()&&!l.startsWith('#')).slice(0,6); const p=document.getElementById('csv-preview'); p.textContent=lines.join('\n'); p.style.display='block'; }; r.readAsText(f,'UTF-8'); }; };
+window.closeUpload=e=>{ if(e&&e.target!==document.getElementById('up-ov'))return; document.getElementById('up-ov').classList.remove('open'); upSec=null; };
+
+window.doUpload=async()=>{ const f=document.getElementById('csv-input').files[0]; if (!f){alert('파일을 선택하세요.');return;} const txt=await f.text(); const lines=txt.split('\n').filter(l=>l.trim()&&!l.startsWith('#')); if (lines.length<2){alert('데이터가 없습니다.');return;} const headers=lines[0].split(',').map(h=>h.replace(/"/g,'').trim()); const rows=lines.slice(1).map(line=>{ const vals=line.split(',').map(v=>v.replace(/^"|"$/g,'').trim()); const obj={}; headers.forEach((h,i)=>{obj[h]=vals[i]||'';}); return obj; }).filter(r=>Object.values(r).some(v=>v)); const cm={calendar:'calendar',instructor:'instructors',afterschool:'afterschool'}; const coll=cm[upSec]; const nf={calendar:['year','month','day'],instructor:['dayOfWeek']}; rows.forEach(r=>{(nf[upSec]||[]).forEach(f=>{if(r[f])r[f]=+r[f];});}); const snap=await getDocs(collection(db,coll)); await Promise.all(snap.docs.map(d=>deleteDoc(doc(db,coll,d.id)))); await Promise.all(rows.map(r=>addDoc(collection(db,coll),r))); alert(`${rows.length}건 업로드 완료!`); closeUpload(); };
+</script>
+</body>
+</html>
