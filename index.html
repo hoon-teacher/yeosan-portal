@@ -147,7 +147,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 .camber { background: var(--amber-lt); color: var(--amber); }
 .cred   { background: var(--red-lt);   color: var(--red);   }
 .cgray  { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
-.ttday  { background: #FFFBEB !important; }
+.ttday  { background: #F0F7FF !important; }
 .tt-cell { display: flex; flex-direction: column; gap: 2px; align-items: center; }
 .tt-prog { font-size: 12px; font-weight: 600; }
 .tt-loc  { font-size: 10px; color: var(--text3); }
@@ -553,7 +553,7 @@ window.renderAfter = (tab, tabGroup) => {
   if (tabGroup) curTabGroup = tabGroup;
   curTab = tab;
 
-  const CLASS_TABS = ['전체', ...new Set(allAfter.map(r=>r.className||'미분류'))];
+  const CLASS_TABS = ['전체', '늘봄1반', '늘봄2반'];
   const GRADE_TABS = ['1학년','2학년','3학년','4학년','5학년','6학년'];
 
   // 반별 탭 렌더
