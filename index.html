@@ -200,7 +200,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 .mni { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 4px; cursor: pointer; font-size: 10px; color: var(--text3); }
 .mni.active { color: var(--accent); font-weight: 600; }
 .mni span { font-size: 21px; }
-@media (max-width: 700px) { .sidebar { display: none; } .main { padding: 20px 16px 80px; } .mnav { display: flex; } }
+@media (max-width: 700px) { .sidebar { display: none; } .main { padding: 20px 16px 80px; } .mnav { display: flex; } #summary-bar { grid-template-columns: 1fr !important; } }
 </style>
 </head>
 <body>
@@ -230,6 +230,26 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
         <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;" id="home-date"></div>
       </div>
       <div id="urgent-wrap"></div>
+
+      <!-- 상단 요약 바 -->
+      <div id="summary-bar" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
+        <!-- 날씨 -->
+        <div class="card" style="margin-bottom:0;padding:14px 18px;">
+          <div class="clabel" style="margin-bottom:8px;">🌤 오늘 날씨 · 여산</div>
+          <div id="home-weather"><div style="font-size:12px;color:var(--text3);">불러오는 중...</div></div>
+        </div>
+        <!-- 급식 -->
+        <div class="card" style="margin-bottom:0;padding:14px 18px;">
+          <div class="clabel" style="margin-bottom:8px;">🍱 오늘 급식</div>
+          <div id="home-meal"><div style="font-size:12px;color:var(--text3);">불러오는 중...</div></div>
+        </div>
+        <!-- 미결 공지 -->
+        <div class="card" style="margin-bottom:0;padding:14px 18px;">
+          <div class="clabel" style="margin-bottom:8px;">📋 공지 현황</div>
+          <div id="home-notice-stat"></div>
+        </div>
+      </div>
+
       <div class="hgrid">
         <div class="card">
           <div class="crow"><span class="clabel">📢 공지사항</span><button class="blnk" onclick="go('notice',document.querySelector('[data-p=notice]'))">전체보기 →</button></div>
@@ -449,12 +469,41 @@ window.go = (pid, el) => {
 
 /* ── Firestore 구독 ── */
 onSnapshot(query(collection(db,'notices'), orderBy('createdAt','desc')), snap => {
-  const list = snap.docs.map(d=>({id:d.id,...d.data()}));
-  renderNotices('notice-list', list, true);
+  const allList = snap.docs.map(d=>({id:d.id,...d.data()}));
+  const todayStr = today.toISOString().slice(0,10); // YYYY-MM-DD
+
+  // 기한 필터: expire 없으면 항상 표시, expire 있으면 오늘 이전이면 숨김
+  const list = allList.filter(n => {
+    if (!n.expire) return true;
+    return n.expire >= todayStr;
+  });
+
+  renderNotices('notice-list', allList, true); // 공지 탭은 기한 지난 것도 표시(관리용)
   renderNotices('home-notices', list.slice(0,4), false);
+
+  // 긴급 배너 (기한 내 것만)
   const urg = list.find(n=>n.badge==='urgent');
   document.getElementById('urgent-wrap').innerHTML = urg
     ? `<div class="ubanner"><div class="ulbl">📌 긴급 공지</div><div class="utext" style="font-weight:600;">${urg.title||''}</div>${urg.text?`<div class="utext" style="margin-top:3px;font-size:13px;opacity:.85;">${urg.text}</div>`:''}</div>` : '';
+
+  // 미결 공지 카운트
+  const urgent = list.filter(n=>n.badge==='urgent').length;
+  const info   = list.filter(n=>n.badge==='info').length;
+  const total  = list.length;
+  const statEl = document.getElementById('home-notice-stat');
+  if (statEl) statEl.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:13px;color:var(--text2);">활성 공지</span>
+        <span style="font-size:20px;font-weight:600;color:var(--text);">${total}건</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        ${urgent?`<span class="badge bu">긴급 ${urgent}</span>`:''}
+        ${info?`<span class="badge bi">안내 ${info}</span>`:''}
+        ${allList.length-total>0?`<span class="badge" style="background:var(--surface2);color:var(--text3);">기한만료 ${allList.length-total}</span>`:''}
+      </div>
+      ${urgent?`<div style="font-size:11px;color:var(--red);margin-top:2px;">⚠ 긴급 공지 ${urgent}건 확인 필요</div>`:'<div style="font-size:11px;color:var(--accent);margin-top:2px;">✓ 긴급 공지 없음</div>'}
+    </div>`;
 });
 
 onSnapshot(collection(db,'calendar'), snap => {
@@ -848,8 +897,11 @@ function buildForm(t,v={}) {
     <div class="fg"><label>배지</label><select id="f-badge">${['urgent','info','done','notice'].map(b=>`<option value="${b}" ${v.badge===b?'selected':''}>${BLBL[b]}</option>`).join('')}</select></div>
     <div class="fg"><label>제목</label><input id="f-title" placeholder="공지 제목을 입력하세요" value="${v.title||''}"></div>
     <div class="fg"><label>내용</label><textarea id="f-text" placeholder="상세 내용 (클릭하면 펼쳐집니다)">${v.text||''}</textarea></div>
-    <div class="fg"><label>날짜 (예: 2026.04.01)</label><input id="f-date" value="${v.date||''}"></div>
-    <div class="fg"><label>작성자</label><input id="f-author" value="${v.author||''}"></div>`;
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="fg" style="margin-bottom:0;"><label>작성일</label><input type="date" id="f-date" value="${v.date||new Date().toISOString().slice(0,10)}"></div>
+      <div class="fg" style="margin-bottom:0;"><label>게시 기한 (이후 자동 숨김)</label><input type="date" id="f-expire" value="${v.expire||''}"></div>
+    </div>
+    <div class="fg" style="margin-top:14px;"><label>작성자</label><input id="f-author" value="${v.author||''}"></div>`;
   if (t==='calendar') return `
     <div class="fg"><label>유형</label><select id="f-type">
       <option value=""       ${!v.type||v.type===''?'selected':''}>일반 일정</option>
@@ -895,7 +947,13 @@ function buildForm(t,v={}) {
 window.saveModal = async () => {
   const g=id=>document.getElementById(id)?.value?.trim()||'';
   let data={}, coll='';
-  if (curModal==='notice')      { data={badge:g('f-badge'),title:g('f-title'),text:g('f-text'),date:g('f-date'),author:g('f-author'),createdAt:serverTimestamp()}; coll='notices';     if (!data.title){alert('제목을 입력하세요.');return;} }
+  if (curModal==='notice') {
+    const rawDate = g('f-date');
+    const fmtDate = rawDate ? rawDate.replace(/-/g,'.') : '';
+    data={badge:g('f-badge'),title:g('f-title'),text:g('f-text'),date:fmtDate,expire:g('f-expire'),author:g('f-author'),createdAt:serverTimestamp()};
+    coll='notices';
+    if (!data.title){alert('제목을 입력하세요.');return;}
+  }
   else if (curModal==='calendar')   { data={year:+g('f-year'),month:+g('f-month'),day:+g('f-day'),name:g('f-name'),detail:g('f-detail'),type:g('f-type')}; coll='calendar';    if (!data.name||!data.day){alert('날짜와 일정명을 입력하세요.');return;} }
   else if (curModal==='instructor') { data={dayOfWeek:+g('f-dow'),time:g('f-time'),subject:g('f-subject'),grade:g('f-grade'),room:g('f-room'),detail:g('f-detail')}; coll='instructors'; if (!data.subject){alert('수업명을 입력하세요.');return;} }
   else if (curModal==='afterschool'){ data={className:g('f-class'),day:+g('f-day'),time:g('f-time'),program:g('f-program'),type:g('f-type'),location:g('f-location'),target:g('f-target')}; coll='afterschool'; if (!data.program||!data.time){alert('시간과 프로그램명을 입력하세요.');return;} }
@@ -943,6 +1001,100 @@ window.openUpload=sec=>{ upSec=sec; const lb={calendar:'학사일정',instructor
 window.closeUpload=e=>{ if(e&&e.target!==document.getElementById('up-ov'))return; document.getElementById('up-ov').classList.remove('open'); upSec=null; };
 
 window.doUpload=async()=>{ const f=document.getElementById('csv-input').files[0]; if (!f){alert('파일을 선택하세요.');return;} const txt=await readCSVFile(f); const lines=txt.split('\n').filter(l=>l.trim()&&!l.startsWith('#')); if (lines.length<2){alert('데이터가 없습니다.');return;} const headers=lines[0].split(',').map(h=>h.replace(/"/g,'').trim()); const rows=lines.slice(1).map(line=>{ const vals=line.split(',').map(v=>v.replace(/^"|"$/g,'').trim()); const obj={}; headers.forEach((h,i)=>{obj[h]=vals[i]||'';}); return obj; }).filter(r=>Object.values(r).some(v=>v)); const cm={calendar:'calendar',instructor:'instructors',afterschool:'afterschool'}; const coll=cm[upSec]; const nf={calendar:['year','month','day'],instructor:['dayOfWeek','year','month','day'],afterschool:['day']}; rows.forEach(r=>{(nf[upSec]||[]).forEach(fld=>{if(r[fld])r[fld]=+r[fld];});}); const snap=await getDocs(collection(db,coll)); await Promise.all(snap.docs.map(d=>deleteDoc(doc(db,coll,d.id)))); await Promise.all(rows.map(r=>addDoc(collection(db,coll),r))); alert(`${rows.length}건 업로드 완료!`); closeUpload(); };
+
+/* ── 날씨 (Open-Meteo 무료, 가입불필요) ── */
+// 여산초 좌표: 익산시 여산면 (위도 36.02, 경도 127.08 근사)
+async function loadWeather() {
+  const el = document.getElementById('home-weather'); if (!el) return;
+  try {
+    // 날씨 + 미세먼지(air quality) 동시 요청
+    const [wRes, aqRes] = await Promise.all([
+      fetch('https://api.open-meteo.com/v1/forecast?latitude=36.02&longitude=127.08&current=temperature_2m,weathercode,windspeed_10m,relativehumidity_2m&timezone=Asia%2FSeoul'),
+      fetch('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=36.02&longitude=127.08&current=pm10,pm2_5&timezone=Asia%2FSeoul')
+    ]);
+    const w = await wRes.json();
+    const aq = await aqRes.json();
+
+    const temp = Math.round(w.current.temperature_2m);
+    const hum  = w.current.relativehumidity_2m;
+    const wcode= w.current.weathercode;
+    const pm10 = Math.round(aq.current.pm10);
+    const pm25 = Math.round(aq.current.pm2_5);
+
+    const WICON = {0:'☀',1:'🌤',2:'⛅',3:'☁',45:'🌫',48:'🌫',51:'🌦',53:'🌦',55:'🌧',61:'🌧',63:'🌧',65:'🌧',71:'🌨',73:'🌨',75:'🌨',80:'🌦',81:'🌧',82:'🌧',95:'⛈',96:'⛈',99:'⛈'};
+    const WNAME = {0:'맑음',1:'대체로 맑음',2:'구름 조금',3:'흐림',45:'안개',48:'짙은 안개',51:'이슬비',53:'이슬비',55:'이슬비',61:'비',63:'비',65:'강한 비',71:'눈',73:'눈',75:'강한 눈',80:'소나기',81:'소나기',82:'강한 소나기',95:'뇌우',96:'뇌우',99:'뇌우'};
+    const icon = WICON[wcode] || '🌡';
+    const wname= WNAME[wcode] || '';
+
+    // 미세먼지 등급
+    const pm10Grade = pm10<=30?['좋음','var(--accent)']:pm10<=80?['보통','var(--blue)']:pm10<=150?['나쁨','var(--amber)']:['매우나쁨','var(--red)'];
+    const pm25Grade = pm25<=15?['좋음','var(--accent)']:pm25<=35?['보통','var(--blue)']:pm25<=75?['나쁨','var(--amber)']:['매우나쁨','var(--red)'];
+
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span style="font-size:32px;line-height:1;">${icon}</span>
+        <div>
+          <div style="font-size:22px;font-weight:600;line-height:1;">${temp}°C</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">${wname} · 습도 ${hum}%</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--surface2);color:${pm10Grade[1]};">
+          미세먼지 ${pm10}㎍ <b>${pm10Grade[0]}</b>
+        </span>
+        <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--surface2);color:${pm25Grade[1]};">
+          초미세 ${pm25}㎍ <b>${pm25Grade[0]}</b>
+        </span>
+      </div>`;
+  } catch(e) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);">날씨 정보를 불러올 수 없습니다.</div>';
+  }
+}
+
+/* ── 급식 (NEIS 오픈API) ── */
+// ★ 여기에 NEIS API 키를 입력하세요
+// 발급: https://open.neis.go.kr → 회원가입 → 인증키 신청
+const NEIS_KEY = '27c046fa2fb64bb2b91bf9bb5cbcd31e';
+const SCHOOL_CODE = '7380834'; // 여산초등학교 행정표준코드
+const OFFICE_CODE = 'J10';     // 전북특별자치도교육청
+
+async function loadMeal() {
+  const el = document.getElementById('home-meal'); if (!el) return;
+  const d = today;
+  const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+
+  if (NEIS_KEY === 'YOUR_NEIS_API_KEY') {
+    el.innerHTML = `<div style="font-size:12px;color:var(--text3);line-height:1.6;">
+      NEIS API 키 설정 필요<br>
+      <a href="https://open.neis.go.kr" target="_blank" style="color:var(--accent);font-size:11px;">open.neis.go.kr에서 발급 →</a>
+    </div>`;
+    return;
+  }
+
+  try {
+    const url = `https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${OFFICE_CODE}&SD_SCHUL_CODE=${SCHOOL_CODE}&MLSV_YMD=${dateStr}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const rows = json?.mealServiceDietInfo?.[1]?.row;
+    if (!rows?.length) { el.innerHTML='<div class="empty">오늘 급식 정보가 없습니다.</div>'; return; }
+
+    const meal = rows[0];
+    const dishes = (meal.DDISH_NM||'').replace(/<br\/>/g,'\n').split('\n').map(d=>d.replace(/\s*\([\d.]+\)/g,'').trim()).filter(Boolean);
+    const cal = meal.CAL_INFO||'';
+
+    el.innerHTML = `
+      <div style="font-size:12.5px;line-height:1.8;color:var(--text);">
+        ${dishes.map(d=>`<div style="display:flex;align-items:center;gap:5px;"><span style="color:var(--accent);font-size:10px;">●</span>${d}</div>`).join('')}
+      </div>
+      ${cal?`<div style="font-size:10px;color:var(--text3);margin-top:6px;font-family:'DM Mono',monospace;">${cal}</div>`:''}`;
+  } catch(e) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);">급식 정보를 불러올 수 없습니다.</div>';
+  }
+}
+
+// 날씨·급식 로드
+loadWeather();
+loadMeal();
 </script>
 </body>
 </html>
