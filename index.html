@@ -136,16 +136,21 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 .tttab:hover { background: var(--surface2); }
 .tttab.active { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
 .ttwrap { overflow-x: auto; }
-.tt { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 400px; }
-.tt th { padding: 7px 10px; text-align: center; font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: .05em; border-bottom: 1.5px solid var(--border2); }
-.tt td { padding: 8px 10px; text-align: center; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.tt { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 560px; }
+.tt th { padding: 8px 10px; text-align: center; font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: .05em; border-bottom: 1.5px solid var(--border2); }
+.tt td { padding: 9px 8px; text-align: center; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .tt tr:last-child td { border-bottom: none; }
-.tt td:first-child { text-align: left; font-size: 12px; color: var(--text2); white-space: nowrap; }
-.chip { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 500; }
+.tt td:first-child { font-size: 11px; color: var(--text3); white-space: nowrap; font-family: 'DM Mono', monospace; min-width: 110px; background: var(--surface2); }
+.chip { display: inline-block; padding: 3px 9px; border-radius: 6px; font-size: 11px; font-weight: 500; white-space: nowrap; }
 .cblue  { background: var(--blue-lt);  color: var(--blue);  }
 .cgreen { background: var(--accent-lt);color: var(--accent);}
 .camber { background: var(--amber-lt); color: var(--amber); }
-.ttday  { background: var(--surface2); }
+.cred   { background: var(--red-lt);   color: var(--red);   }
+.cgray  { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+.ttday  { background: #FFFBEB !important; }
+.tt-cell { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+.tt-prog { font-size: 12px; font-weight: 600; }
+.tt-loc  { font-size: 10px; color: var(--text3); }
 
 /* links */
 .lgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
@@ -304,12 +309,19 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
         <div class="pa">
           <button class="btn bs" onclick="dlCSV('afterschool')">⬇ 예시 CSV</button>
           <button class="btn bs" onclick="openUpload('afterschool')">⬆ CSV 업로드</button>
-          <button class="btn bp" onclick="openModal('afterschool')">+ 추가</button>
+          <button class="btn bp" onclick="openModal('afterschool')">+ 추가 / 수정</button>
         </div>
       </div>
-      <div class="card">
-        <div class="tttabs" id="tt-tabs"></div>
-        <div class="ttwrap"><table class="tt"><thead><tr id="tt-head"></tr></thead><tbody id="tt-body"></tbody></table></div>
+      <!-- 반 탭 -->
+      <div class="tttabs" id="tt-tabs"></div>
+      <!-- 시간표 카드 -->
+      <div class="card" id="tt-card">
+        <div class="ttwrap">
+          <table class="tt">
+            <thead><tr id="tt-head"></tr></thead>
+            <tbody id="tt-body"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -515,23 +527,49 @@ function renderInst() {
 /* ── 방과후 ── */
 window.renderAfter = (tab) => {
   curTab=tab;
-  const cats=['전체',...new Set(allAfter.map(r=>r.category||'기타'))];
+  // 반 탭 목록
+  const classes=['전체',...new Set(allAfter.map(r=>r.className||'미분류'))].filter((v,i,a)=>a.indexOf(v)===i);
   const te=document.getElementById('tt-tabs');
-  if (te) te.innerHTML=cats.map(c=>`<button class="tttab ${c===tab?'active':''}" onclick="renderAfter('${c}')">${c}</button>`).join('');
-  const rows=tab==='전체'?allAfter:allAfter.filter(r=>r.category===tab);
-  const dow=today.getDay(), cm={1:1,2:2,3:3,4:4,5:5}, tc=cm[dow]||-1;
-  const he=document.getElementById('tt-head');
-  if (he) he.innerHTML=['프로그램','월','화','수','목','금'].map((d,i)=>`<th class="${i===tc?'ttday':''}">${d}</th>`).join('');
-  const be=document.getElementById('tt-body'); if (!be) return;
-  if (!rows.length) { be.innerHTML='<tr><td colspan="6" class="empty">등록된 프로그램이 없습니다.</td></tr>'; return; }
-  be.innerHTML=rows.map(r=>`
-    <tr>
-      <td>${r.label} <span style="margin-left:4px;">
-        <button class="btn bsm" onclick="openModal('afterschool','${r.id}')">수정</button>
-        <button class="btn bd" onclick="del('afterschool','${r.id}')">삭제</button>
-      </span></td>
-      ${['mon','tue','wed','thu','fri'].map((k,i)=>`<td class="${i+1===tc?'ttday':''}">${r[k]?`<span class="chip ${CHIP[r.color]||'cblue'}">${r[k]}</span>`:''}</td>`).join('')}
-    </tr>`).join('');
+  if (te) te.innerHTML=classes.map(c=>`<button class="tttab ${c===tab?'active':''}" onclick="renderAfter('${c}')">${c}</button>`).join('');
+
+  const rows = tab==='전체' ? allAfter : allAfter.filter(r=>r.className===tab);
+  const dow=today.getDay(), colMap={1:1,2:2,3:3,4:4,5:5}, tc=colMap[dow]||-1;
+
+  // 시간대 목록 (정렬)
+  const times=[...new Set(rows.map(r=>r.time))].sort();
+
+  const headEl=document.getElementById('tt-head');
+  if (headEl) headEl.innerHTML=
+    `<th>시간</th>`+['월','화','수','목','금'].map((d,i)=>`<th class="${i+1===tc?'ttday':''}">${d}</th>`).join('');
+
+  const bodyEl=document.getElementById('tt-body'); if (!bodyEl) return;
+  if (!rows.length) { bodyEl.innerHTML='<tr><td colspan="6" class="empty">등록된 시간표가 없습니다.</td></tr>'; return; }
+
+  const CHIP_MAP = { '맞춤형':'cgreen', '선택형(교육)':'cblue', '선택형(돌봄)':'camber', '돌봄':'camber' };
+  const DAY_KEY  = {1:'mon',2:'tue',3:'wed',4:'thu',5:'fri'};
+
+  bodyEl.innerHTML=times.map(time=>{
+    const rowData={};
+    [1,2,3,4,5].forEach(d=>{
+      const items=rows.filter(r=>r.time===time&&r.day===d);
+      rowData[d]=items;
+    });
+    return `<tr>
+      <td>${time}</td>
+      ${[1,2,3,4,5].map(d=>{
+        const items=rowData[d];
+        if (!items||!items.length) return `<td class="${d===tc?'ttday':''}"></td>`;
+        return `<td class="${d===tc?'ttday':''}">
+          ${items.map(i=>`
+            <div class="tt-cell" style="margin-bottom:${items.length>1?'4px':'0'};">
+              <span class="chip ${CHIP_MAP[i.type]||'cgray'}">${i.program}</span>
+              ${i.location?`<span class="tt-loc">${i.location}</span>`:''}
+              ${i.target?`<span class="tt-loc">${i.target}</span>`:''}
+            </div>`).join('')}
+        </td>`;
+      }).join('')}
+    </tr>`;
+  }).join('');
 };
 
 /* ── 링크 ── */
@@ -595,14 +633,22 @@ function buildForm(t,v={}) {
     <div class="fg"><label>장소</label><input id="f-room" value="${v.room||''}"></div>
     <div class="fg"><label>상세 (선택)</label><input id="f-detail" value="${v.detail||''}"></div>`;
   if (t==='afterschool') return `
-    <div class="fg"><label>구분</label><input id="f-category" placeholder="늘봄 / 방과후" value="${v.category||''}"></div>
-    <div class="fg"><label>프로그램명</label><input id="f-label" value="${v.label||''}"></div>
-    <div class="fg"><label>월요일</label><input id="f-mon" value="${v.mon||''}"></div>
-    <div class="fg"><label>화요일</label><input id="f-tue" value="${v.tue||''}"></div>
-    <div class="fg"><label>수요일</label><input id="f-wed" value="${v.wed||''}"></div>
-    <div class="fg"><label>목요일</label><input id="f-thu" value="${v.thu||''}"></div>
-    <div class="fg"><label>금요일</label><input id="f-fri" value="${v.fri||''}"></div>
-    <div class="fg"><label>칩 색상</label><select id="f-color"><option value="blue" ${v.color==='blue'?'selected':''}>파랑</option><option value="green" ${v.color==='green'?'selected':''}>초록</option><option value="amber" ${v.color==='amber'?'selected':''}>주황</option></select></div>`;
+    <div class="fg"><label>반 구분</label><select id="f-class">
+      <option value="늘봄1반">늘봄1반</option>
+      <option value="늘봄2반">늘봄2반</option>
+    </select></div>
+    <div class="fg"><label>요일</label><select id="f-day">
+      ${[['1','월'],['2','화'],['3','수'],['4','목'],['5','금']].map(([val,lb])=>`<option value="${val}" ${String(v.day)===val?'selected':''}>${lb}요일</option>`).join('')}
+    </select></div>
+    <div class="fg"><label>시간 (예: 14:00~14:40)</label><input id="f-time" value="${v.time||''}"></div>
+    <div class="fg"><label>프로그램명</label><input id="f-program" placeholder="미술, 컴퓨터 등" value="${v.program||''}"></div>
+    <div class="fg"><label>유형</label><select id="f-type">
+      <option value="맞춤형"       ${v.type==='맞춤형'?'selected':''}>맞춤형 (초록)</option>
+      <option value="선택형(교육)" ${v.type==='선택형(교육)'?'selected':''}>선택형(교육) (파랑)</option>
+      <option value="선택형(돌봄)" ${v.type==='선택형(돌봄)'?'selected':''}>선택형(돌봄) (주황)</option>
+    </select></div>
+    <div class="fg"><label>장소 (선택)</label><input id="f-location" value="${v.location||''}"></div>
+    <div class="fg"><label>대상 (선택, 예: 초1)</label><input id="f-target" value="${v.target||''}"></div>`;
   if (t==='link') return `
     <div class="fg"><label>아이콘 (이모지)</label><input id="f-icon" value="${v.icon||'📊'}" style="max-width:80px;"></div>
     <div class="fg"><label>이름</label><input id="f-name" value="${v.name||''}"></div>
@@ -617,7 +663,7 @@ window.saveModal = async () => {
   if (curModal==='notice')      { data={badge:g('f-badge'),text:g('f-text'),date:g('f-date'),author:g('f-author'),createdAt:serverTimestamp()}; coll='notices';     if (!data.text){alert('내용을 입력하세요.');return;} }
   else if (curModal==='calendar')   { data={year:+g('f-year'),month:+g('f-month'),day:+g('f-day'),name:g('f-name'),detail:g('f-detail')}; coll='calendar';    if (!data.name||!data.day){alert('날짜와 일정명을 입력하세요.');return;} }
   else if (curModal==='instructor') { data={dayOfWeek:+g('f-dow'),time:g('f-time'),subject:g('f-subject'),grade:g('f-grade'),room:g('f-room'),detail:g('f-detail')}; coll='instructors'; if (!data.subject){alert('수업명을 입력하세요.');return;} }
-  else if (curModal==='afterschool'){ data={category:g('f-category'),label:g('f-label'),mon:g('f-mon'),tue:g('f-tue'),wed:g('f-wed'),thu:g('f-thu'),fri:g('f-fri'),color:g('f-color')}; coll='afterschool'; if (!data.label){alert('프로그램명을 입력하세요.');return;} }
+  else if (curModal==='afterschool'){ data={className:g('f-class'),day:+g('f-day'),time:g('f-time'),program:g('f-program'),type:g('f-type'),location:g('f-location'),target:g('f-target')}; coll='afterschool'; if (!data.program||!data.time){alert('시간과 프로그램명을 입력하세요.');return;} }
   else if (curModal==='link')       { data={icon:g('f-icon'),name:g('f-name'),desc:g('f-desc'),url:g('f-url')}; coll='links'; if (!data.name||!data.url){alert('이름과 URL을 입력하세요.');return;} }
   if (editId) await updateDoc(doc(db,coll,editId),data);
   else        await addDoc(collection(db,coll),data);
@@ -631,7 +677,8 @@ window.del=async(coll,id)=>{ if(!confirm('삭제하시겠습니까?'))return; aw
 const TMPL={
   calendar:   {comment:'# year,month,day,name,detail',    headers:['year','month','day','name','detail'],                       rows:[[2026,4,16,'세월호 10주기 추모 활동','전 학급 학습지'],[2026,5,5,'어린이날','휴업일']]},
   instructor: {comment:'# dayOfWeek: 1=월 2=화 3=수 4=목 5=금', headers:['dayOfWeek','time','subject','grade','room','detail'],rows:[[1,'09:00~09:40','체육 (스포츠 강사)','3학년','체육관','전래놀이 수업'],[3,'14:00~14:40','미술 (공예 강사)','2학년','미술실','']]},
-  afterschool:{comment:'# color: blue / green / amber',   headers:['category','label','mon','tue','wed','thu','fri','color'],   rows:[['늘봄','늘봄 1반','독서','','독서','','독서','green'],['방과후','컴퓨터','','컴퓨터','','컴퓨터','','blue']]}
+  afterschool:{comment:'# type: 맞춤형 / 선택형(교육) / 선택형(돌봄)  |  day: 1=월 2=화 3=수 4=목 5=금', headers:['className','day','time','program','type','location','target'],
+              rows:[['늘봄1반',1,'13:10~13:50','미술','맞춤형','조리실습실','초1'],['늘봄1반',1,'14:00~14:40','놀이체육','맞춤형','강당','초1'],['늘봄1반',2,'14:00~14:40','컴퓨터','맞춤형','컴퓨터실','초1'],['늘봄2반',1,'14:00~14:40','놀이체육','맞춤형','강당','초2']]}
 };
 
 window.dlCSV=sec=>{ const t=TMPL[sec]; if (!t) return; let csv=t.comment+'\n'+t.headers.join(',')+'\n'; t.rows.forEach(r=>{csv+=r.map(v=>`"${v}"`).join(',')+'\n';}); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'})); a.download=`예시_${sec}.csv`; a.click(); };
