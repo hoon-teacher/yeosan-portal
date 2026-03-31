@@ -79,18 +79,24 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 
 /* notice */
 .nlist { list-style: none; }
-.nitem { display: flex; align-items: flex-start; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); }
-.nitem:first-child { padding-top: 0; }
-.nitem:last-child { border-bottom: none; padding-bottom: 0; }
-.badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; margin-top: 2px; }
+.nitem { border-bottom: 1px solid var(--border); }
+.nitem:last-child { border-bottom: none; }
+.nitem-header { display: flex; align-items: center; gap: 10px; padding: 11px 0; cursor: pointer; }
+.nitem-header:hover .ntitle { color: var(--accent); }
+.badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
 .bu { background: var(--red-lt);   color: var(--red);   }
 .bi { background: var(--blue-lt);  color: var(--blue);  }
 .bd2{ background: var(--accent-lt);color: var(--accent);}
 .bn { background: var(--amber-lt); color: var(--amber); }
-.nbody { flex: 1; min-width: 0; }
-.ntext { font-size: 13.5px; line-height: 1.55; }
-.nmeta { font-size: 11px; color: var(--text3); margin-top: 3px; font-family: 'DM Mono', monospace; }
-.iact  { display: flex; gap: 5px; flex-shrink: 0; padding-top: 2px; }
+.ntitle { flex: 1; font-size: 13.5px; font-weight: 500; color: var(--text); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nmeta { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; white-space: nowrap; flex-shrink: 0; }
+.nchevron { font-size: 11px; color: var(--text3); flex-shrink: 0; transition: transform .2s; }
+.nchevron.open { transform: rotate(180deg); }
+.nitem-body { display: none; padding: 0 0 12px 0; }
+.nitem-body.open { display: block; }
+.ntext { font-size: 13.5px; line-height: 1.65; color: var(--text2); white-space: pre-wrap; }
+.nbody-meta { font-size: 11px; color: var(--text3); margin-top: 8px; font-family: 'DM Mono', monospace; }
+.iact  { display: flex; gap: 5px; flex-shrink: 0; }
 
 /* calendar */
 .calwrap { display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: start; }
@@ -448,12 +454,12 @@ onSnapshot(query(collection(db,'notices'), orderBy('createdAt','desc')), snap =>
   renderNotices('home-notices', list.slice(0,4), false);
   const urg = list.find(n=>n.badge==='urgent');
   document.getElementById('urgent-wrap').innerHTML = urg
-    ? `<div class="ubanner"><div class="ulbl">📌 긴급 공지</div><div class="utext">${urg.text}</div></div>` : '';
+    ? `<div class="ubanner"><div class="ulbl">📌 긴급 공지</div><div class="utext" style="font-weight:600;">${urg.title||''}</div>${urg.text?`<div class="utext" style="margin-top:3px;font-size:13px;opacity:.85;">${urg.text}</div>`:''}</div>` : '';
 });
 
 onSnapshot(collection(db,'calendar'), snap => {
   allEv = snap.docs.map(d=>({id:d.id,...d.data()}));
-  drawCal('h-cal-title','h-cal-grid','h-cal-events', hY, hM);
+  drawCal('h-cal-title','h-cal-grid','h-cal-events', hY, hM, false);
   drawCal('m-cal-title','m-cal-grid','m-cal-events', calY, calM);
 });
 
@@ -474,25 +480,38 @@ onSnapshot(collection(db,'links'), snap => {
 });
 
 /* ── 공지 ── */
-function renderNotices(id, list, edit) {
-  const el=document.getElementById(id); if (!el) return;
+function toggleNotice(id) {
+  const body = document.getElementById('nb-'+id);
+  const chev = document.getElementById('nc-'+id);
+  if (!body) return;
+  body.classList.toggle('open');
+  if (chev) chev.classList.toggle('open');
+}
+
+function renderNotices(elId, list, edit) {
+  const el=document.getElementById(elId); if (!el) return;
   if (!list.length) { el.innerHTML='<div class="empty">등록된 공지사항이 없습니다.</div>'; return; }
   el.innerHTML=list.map(n=>`
     <li class="nitem">
-      <span class="badge ${BCLS[n.badge]||'bn'}">${BLBL[n.badge]||n.badge}</span>
-      <div class="nbody">
-        <div class="ntext">${n.text||''}</div>
-        <div class="nmeta">${n.date||''} · ${n.author||''}</div>
+      <div class="nitem-header" onclick="toggleNotice('${n.id}')">
+        <span class="badge ${BCLS[n.badge]||'bn'}">${BLBL[n.badge]||n.badge}</span>
+        <span class="ntitle">${n.title||n.text?.split('\n')[0]||'(제목 없음)'}</span>
+        <span class="nmeta">${n.date||''}</span>
+        <span class="nchevron" id="nc-${n.id}">▾</span>
       </div>
-      ${edit?`<div class="iact">
-        <button class="btn bsm" onclick="openModal('notice','${n.id}')">수정</button>
-        <button class="btn bd" onclick="del('notices','${n.id}')">삭제</button>
-      </div>`:''}
+      <div class="nitem-body" id="nb-${n.id}">
+        <div class="ntext">${n.text||''}</div>
+        <div class="nbody-meta">${n.date||''} · ${n.author||''}</div>
+        ${edit?`<div class="iact" style="margin-top:8px;">
+          <button class="btn bsm" onclick="openModal('notice','${n.id}')">수정</button>
+          <button class="btn bd" onclick="del('notices','${n.id}')">삭제</button>
+        </div>`:''}
+      </div>
     </li>`).join('');
 }
 
 /* ── 달력 ── */
-function drawCal(tid, gid, eid, y, m) {
+function drawCal(tid, gid, eid, y, m, showEdit=true) {
   const fd=new Date(y,m-1,1).getDay(), dim=new Date(y,m,0).getDate(), dip=new Date(y,m-1,0).getDate();
   const el=document.getElementById(tid); if (el) el.textContent=`${y}년 ${m}월`;
   const evs=allEv.filter(e=>+e.year===y&&+e.month===m);
@@ -510,7 +529,6 @@ function drawCal(tid, gid, eid, y, m) {
     const hasEv = evDays.has(d);
     const isSun = dow===0 || isHol;
     const cls=['cc', isT?'today':'', hasEv?'hev':'', isSun?'sun':'', dow===6?'sat':''].filter(Boolean).join(' ');
-    // 공휴일이면 날짜 숫자 빨갛게 + 점 표시
     c+=`<div class="${cls}" style="${isHol&&!isT?'color:#DC2626;font-weight:600;':''}">${d}${isHol?'<span class="hol-dot"></span>':''}</div>`;
   }
   for (let d=1;d<=42-fd-dim;d++) c+=`<div class="cc dim">${d}</div>`;
@@ -519,10 +537,6 @@ function drawCal(tid, gid, eid, y, m) {
   const ev=document.getElementById(eid); if (!ev) return;
   if (!evs.length) { ev.innerHTML='<div class="empty">이달 등록된 일정이 없습니다.</div>'; return; }
 
-  const TYPE_STYLE = {
-    holiday: 'background:var(--red-lt);color:var(--red);',
-    default: 'background:var(--accent-lt);color:var(--accent);'
-  };
   ev.innerHTML=evs.sort((a,b)=>+a.day-+b.day).map(e=>`
     <div class="evitem">
       <div class="evday" style="${e.type==='holiday'?'background:var(--red-lt);color:var(--red);':''}">${e.day}일</div>
@@ -530,17 +544,17 @@ function drawCal(tid, gid, eid, y, m) {
         <div class="evname" style="${e.type==='holiday'?'color:var(--red);':''}">${e.name}</div>
         ${e.detail?`<div class="evdetail">${e.detail}</div>`:''}
       </div>
-      <div class="iact">
+      ${showEdit ? `<div class="iact">
         <button class="btn bsm" onclick="openModal('calendar','${e.id}')">수정</button>
         <button class="btn bd" onclick="del('calendar','${e.id}')">삭제</button>
-      </div>
+      </div>` : ''}
     </div>`).join('');
 }
 
 window.mPrev=()=>{calM--;if(calM<1){calM=12;calY--;}drawCal('m-cal-title','m-cal-grid','m-cal-events',calY,calM);};
 window.mNext=()=>{calM++;if(calM>12){calM=1;calY++;}drawCal('m-cal-title','m-cal-grid','m-cal-events',calY,calM);};
-window.hPrev=()=>{hM--;if(hM<1){hM=12;hY--;}drawCal('h-cal-title','h-cal-grid','h-cal-events',hY,hM);};
-window.hNext=()=>{hM++;if(hM>12){hM=1;hY++;}drawCal('h-cal-title','h-cal-grid','h-cal-events',hY,hM);};
+window.hPrev=()=>{hM--;if(hM<1){hM=12;hY--;}drawCal('h-cal-title','h-cal-grid','h-cal-events',hY,hM,false);};
+window.hNext=()=>{hM++;if(hM>12){hM=1;hY++;}drawCal('h-cal-title','h-cal-grid','h-cal-events',hY,hM,false);};
 
 /* ── 협력수업 ── */
 let instY = today.getFullYear(), instM = today.getMonth()+1;
@@ -832,7 +846,8 @@ window.openModal = async (type, id=null) => {
 function buildForm(t,v={}) {
   if (t==='notice') return `
     <div class="fg"><label>배지</label><select id="f-badge">${['urgent','info','done','notice'].map(b=>`<option value="${b}" ${v.badge===b?'selected':''}>${BLBL[b]}</option>`).join('')}</select></div>
-    <div class="fg"><label>내용</label><textarea id="f-text">${v.text||''}</textarea></div>
+    <div class="fg"><label>제목</label><input id="f-title" placeholder="공지 제목을 입력하세요" value="${v.title||''}"></div>
+    <div class="fg"><label>내용</label><textarea id="f-text" placeholder="상세 내용 (클릭하면 펼쳐집니다)">${v.text||''}</textarea></div>
     <div class="fg"><label>날짜 (예: 2026.04.01)</label><input id="f-date" value="${v.date||''}"></div>
     <div class="fg"><label>작성자</label><input id="f-author" value="${v.author||''}"></div>`;
   if (t==='calendar') return `
@@ -880,7 +895,7 @@ function buildForm(t,v={}) {
 window.saveModal = async () => {
   const g=id=>document.getElementById(id)?.value?.trim()||'';
   let data={}, coll='';
-  if (curModal==='notice')      { data={badge:g('f-badge'),text:g('f-text'),date:g('f-date'),author:g('f-author'),createdAt:serverTimestamp()}; coll='notices';     if (!data.text){alert('내용을 입력하세요.');return;} }
+  if (curModal==='notice')      { data={badge:g('f-badge'),title:g('f-title'),text:g('f-text'),date:g('f-date'),author:g('f-author'),createdAt:serverTimestamp()}; coll='notices';     if (!data.title){alert('제목을 입력하세요.');return;} }
   else if (curModal==='calendar')   { data={year:+g('f-year'),month:+g('f-month'),day:+g('f-day'),name:g('f-name'),detail:g('f-detail'),type:g('f-type')}; coll='calendar';    if (!data.name||!data.day){alert('날짜와 일정명을 입력하세요.');return;} }
   else if (curModal==='instructor') { data={dayOfWeek:+g('f-dow'),time:g('f-time'),subject:g('f-subject'),grade:g('f-grade'),room:g('f-room'),detail:g('f-detail')}; coll='instructors'; if (!data.subject){alert('수업명을 입력하세요.');return;} }
   else if (curModal==='afterschool'){ data={className:g('f-class'),day:+g('f-day'),time:g('f-time'),program:g('f-program'),type:g('f-type'),location:g('f-location'),target:g('f-target')}; coll='afterschool'; if (!data.program||!data.time){alert('시간과 프로그램명을 입력하세요.');return;} }
