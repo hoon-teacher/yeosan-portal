@@ -492,6 +492,7 @@ window.go = (pid, el) => {
 /* ── Firestore 구독 ── */
 onSnapshot(query(collection(db,'notices'), orderBy('createdAt','desc')), snap => {
   const allList = snap.docs.map(d=>({id:d.id,...d.data()}));
+  window._allNotices = allList; // ID 조회용 전역 저장
   const todayStr = today.toISOString().slice(0,10); // YYYY-MM-DD
 
   // 기한 필터: expire 없으면 항상 표시, expire 있으면 오늘 이전이면 숨김
@@ -545,8 +546,8 @@ function renderNotices(elId, list, edit) {
   const el=document.getElementById(elId); if (!el) return;
   if (!list.length) { el.innerHTML='<div class="empty">등록된 공지사항이 없습니다.</div>'; return; }
   el.innerHTML=list.map(n=>`
-    <li class="nitem">
-      <div class="nitem-header" onclick="openNoticePopup('${n.id}',${JSON.stringify(n.title||'')},${JSON.stringify(n.text||'')},${JSON.stringify(n.date||'')},${JSON.stringify(n.author||'')},${JSON.stringify(n.badge||'notice')})">
+    <li class="nitem" data-nid="${n.id}">
+      <div class="nitem-header" onclick="openNoticeById('${n.id}')">
         <span class="badge ${BCLS[n.badge]||'bn'}">${BLBL[n.badge]||n.badge}</span>
         <span class="ntitle">${n.title||n.text?.split('\n')[0]||'(제목 없음)'}</span>
         <span class="nmeta">${n.date||''}</span>
@@ -1112,9 +1113,16 @@ window.openNoticePopup = function(id, title, text, date, author, badge) {
   document.getElementById('modal-body').innerHTML = `
     <div style="font-size:13.5px;line-height:1.8;color:var(--text2);white-space:pre-wrap;">${text||'(내용 없음)'}</div>
     <div style="font-size:11px;color:var(--text3);margin-top:14px;font-family:'DM Mono',monospace;border-top:1px solid var(--border);padding-top:10px;">${date||''} · ${author||''}</div>`;
-  // 저장 버튼 숨기기 (읽기 전용)
-  document.getElementById('notice-popup-save').style.display='none';
+  const saveBtn = document.getElementById('notice-popup-save');
+  if (saveBtn) saveBtn.style.display='none';
   document.getElementById('edit-ov').classList.add('open');
+}
+
+// ID로 공지 찾아서 팝업 — onclick에서 특수문자 이슈 없이 안전하게 호출
+window.openNoticeById = function(id) {
+  const n = _allNotices?.find(n=>n.id===id);
+  if (!n) return;
+  window.openNoticePopup(n.id, n.title||'', n.text||'', n.date||'', n.author||'', n.badge||'notice');
 }
 
 // 날씨·급식 로드
