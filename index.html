@@ -610,6 +610,29 @@ window.hNext=()=>{hM++;if(hM>12){hM=1;hY++;}drawCal('h-cal-title','h-cal-grid','
 /* ── 협력수업 ── */
 let instY = today.getFullYear(), instM = today.getMonth()+1;
 
+// 시간 문자열을 교시로 변환 (기존 데이터 호환)
+function toperiod(time) {
+  if (!time) return '';
+  // 이미 교시 형식이면 그대로
+  if (/교시/.test(time)) return time;
+  // 시작 시간 기준으로 교시 매핑
+  const map = {
+    '09:00': '1교시', '10:00': '2교시', '11:00': '3교시',
+    '13:00': '4교시', '14:00': '5교시', '15:00': '6교시',
+    // 복수교시 시작시간도 처리
+    '09:00~10': '1~2교시', '11:00~13': '3~4교시', '14:00~15': '5~6교시',
+  };
+  // 시작 시간 추출
+  const start = time.slice(0, 5);
+  const end   = time.slice(6, 11);
+  const startPeriod = map[start];
+  const endPeriod   = map[end?.slice(0,5)];
+  if (startPeriod && endPeriod && startPeriod !== endPeriod) {
+    return `${startPeriod}~${endPeriod}`;
+  }
+  return startPeriod || time;
+}
+
 // 중복 제거: year+month+day+time+subject+grade 조합 기준
 function dedupeInst(items) {
   const seen = new Set();
@@ -650,7 +673,7 @@ function renderInst() {
             const row = todayItems.filter(i=>i.time===t);
             const sr = {}; row.forEach(i=>{ if(!sr[i.subject]) sr[i.subject]=[]; sr[i.subject].push(i); });
             return `<tr style="border-bottom:1px solid var(--border);">
-              <td style="padding:7px 10px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);">${t}</td>
+              <td style="padding:7px 10px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);">${toperiod(t)}</td>
               ${Object.keys(subjMap).map(s => {
                 const c=sr[s]||[];
                 return c.length ? `<td style="padding:7px 10px;text-align:center;">${c.map(i=>`<span class="chip ${SUBJ_COLOR[s]||'cgray'}" style="font-size:11px;">${i.grade||''}</span>`).join(' ')}</td>`
@@ -678,7 +701,7 @@ function renderInst() {
           </div>
           ${list.map(i=>`
             <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px;">
-              <span style="font-size:12px;font-weight:600;color:var(--text2);min-width:60px;">${i.time||''}</span>
+              <span style="font-size:12px;font-weight:600;color:var(--text2);min-width:60px;">${toperiod(i.time)||''}</span>
               <span style="font-weight:500;color:var(--accent);">${i.grade||''}</span>
               <span style="font-size:11px;color:var(--text3);">${i.room||''}</span>
             </div>`).join('')}
@@ -757,7 +780,7 @@ function renderInstMonth() {
                 const subjRow = {};
                 row.forEach(i=>{ if(!subjRow[i.subject]) subjRow[i.subject]=[]; subjRow[i.subject].push(i); });
                 return `<tr style="border-bottom:1px solid var(--border);">
-                  <td style="padding:7px 10px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);">${t}</td>
+                  <td style="padding:7px 10px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);">${toperiod(t)}</td>
                   ${Object.keys(subjMap).map(s => {
                     const cell = subjRow[s]||[];
                     if (!cell.length) return `<td style="padding:7px 10px;"></td>`;
