@@ -674,27 +674,30 @@ function buildInstTable(items, SUBJ_COLOR) {
 
   if (!usedPeriods.length) return '';
 
-  // rowspan 계산: 같은 subject+grade가 연속 교시면 병합
-  // skip[s][p] = true 이면 이미 상위 rowspan에 포함됨
+  // ★ 연속교시 병합을 적용할 수업명 목록
+  const MERGE_SUBJECTS = ['공예수업'];
+
+  // rowspan 계산
   const skip = {};
   const rowspan = {};
   subjects.forEach(s => {
     skip[s] = {};
     rowspan[s] = {};
+    const doMerge = MERGE_SUBJECTS.includes(s);
     usedPeriods.forEach((p, idx) => {
       if (skip[s][p]) return;
       const item = cellMap[s][p];
       if (!item) return;
-      // 연속하는 같은 학년 체크
       let span = 1;
-      for (let j = idx+1; j < usedPeriods.length; j++) {
-        const np = usedPeriods[j];
-        // 교시가 연속(바로 다음 숫자)이고 같은 학년인 경우만 병합
-        if (np !== usedPeriods[j-1]+1) break;
-        const next = cellMap[s][np];
-        if (!next || next.grade !== item.grade) break;
-        skip[s][np] = true;
-        span++;
+      if (doMerge) {
+        for (let j = idx+1; j < usedPeriods.length; j++) {
+          const np = usedPeriods[j];
+          if (np !== usedPeriods[j-1]+1) break;
+          const next = cellMap[s][np];
+          if (!next || next.grade !== item.grade) break;
+          skip[s][np] = true;
+          span++;
+        }
       }
       rowspan[s][p] = span;
     });
@@ -775,18 +778,18 @@ function renderInst() {
     } else {
       const subjMap = {};
       todayItems.forEach(i => { if(!subjMap[i.subject]) subjMap[i.subject]=[]; subjMap[i.subject].push(i); });
+      const HOME_MERGE = ['공예수업'];
       homeInst.innerHTML = Object.entries(subjMap).map(([subj, list]) => {
-        // 연속 교시 그룹핑해서 표시
         const sorted = list.slice().sort((a,b)=> {
           const pa = toperiod(a.time||'').match(/^(\d+)/); const pb = toperiod(b.time||'').match(/^(\d+)/);
           return (pa?+pa[1]:99) - (pb?+pb[1]:99);
         });
-        // 같은 학년 연속 교시 병합
         const groups = [];
         sorted.forEach(i => {
           const p = +(toperiod(i.time||'').match(/^(\d+)/)||[0,99])[1];
           const last = groups[groups.length-1];
-          if (last && last.grade===i.grade && last.endP === p-1) {
+          // 공예수업만 연속 교시 병합
+          if (HOME_MERGE.includes(subj) && last && last.grade===i.grade && last.endP === p-1) {
             last.endP = p;
           } else {
             groups.push({grade:i.grade, startP:p, endP:p, room:i.room});
