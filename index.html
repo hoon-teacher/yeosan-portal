@@ -902,7 +902,7 @@ function buildForm(t,v={}) {
     <div class="fg"><label>제목</label><input id="f-title" placeholder="공지 제목을 입력하세요" value="${v.title||''}"></div>
     <div class="fg"><label>내용</label><textarea id="f-text" placeholder="상세 내용 (클릭하면 펼쳐집니다)">${v.text||''}</textarea></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <div class="fg" style="margin-bottom:0;"><label>작성일</label><input type="date" id="f-date" value="${v.date||new Date().toISOString().slice(0,10)}"></div>
+      <div class="fg" style="margin-bottom:0;"><label>작성일</label><input type="date" id="f-date" value="${(v.date||'').replace(/\./g,'-')||new Date().toISOString().slice(0,10)}"></div>
       <div class="fg" style="margin-bottom:0;"><label>게시 기한 (이후 자동 숨김)</label><input type="date" id="f-expire" value="${v.expire||''}"></div>
     </div>
     <div class="fg" style="margin-top:14px;"><label>작성자</label><input id="f-author" value="${v.author||''}"></div>`;
@@ -1078,30 +1078,35 @@ async function loadMeal() {
   const el = document.getElementById('home-meal'); if (!el) return;
   const d = today;
   const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
-  try {
-    // 학교코드 자동조회
-    const sRes = await fetch(`https://open.neis.go.kr/hub/schoolInfo?KEY=${NEIS_KEY}&Type=json&SCHUL_NM=%EC%97%AC%EC%82%B0%EC%B4%88%EB%93%B1%ED%95%99%EA%B5%90&LCTN_SC_NM=%EC%A0%84%EB%9D%BC%EB%B6%81%EB%8F%84`);
-    const sJson = await sRes.json();
-    const sRow  = sJson?.schoolInfo?.[1]?.row?.[0];
-    if (!sRow) { el.innerHTML='<div style="font-size:12px;color:var(--text3);">학교 정보를 찾을 수 없습니다.</div>'; return; }
 
-    const mRes = await fetch(`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${sRow.ATPT_OFCDC_SC_CODE}&SD_SCHUL_CODE=${sRow.SD_SCHUL_CODE}&MLSV_YMD=${dateStr}`);
-    const mJson = await mRes.json();
-    const errCode = mJson?.RESULT?.CODE || mJson?.mealServiceDietInfo?.[0]?.head?.[1]?.RESULT?.CODE;
-    if (errCode === 'INFO-200' || !mJson?.mealServiceDietInfo?.[1]?.row?.length) {
-      el.innerHTML='<div style="font-size:12px;color:var(--text3);line-height:1.6;">오늘 급식 정보가 없습니다.<br><span style="font-size:11px;">(방학 또는 미등록)</span></div>'; return;
-    }
-    const meal   = mJson.mealServiceDietInfo[1].row[0];
-    const dishes = (meal.DDISH_NM||'').replace(/<br\/>/g,'\n').split('\n').map(s=>s.replace(/\s*\([\d.]+\)/g,'').trim()).filter(Boolean);
-    const cal    = meal.CAL_INFO||'';
-    el.innerHTML = `
-      <div style="font-size:12.5px;line-height:1.9;">
-        ${dishes.map(s=>`<div style="display:flex;align-items:center;gap:5px;"><span style="color:var(--accent);font-size:9px;">●</span>${s}</div>`).join('')}
-      </div>
-      ${cal?`<div style="font-size:10px;color:var(--text3);margin-top:6px;font-family:'DM Mono',monospace;">${cal}</div>`:''}`;
-  } catch(e) {
-    el.innerHTML=`<div style="font-size:11px;color:var(--text3);">급식 정보 오류<br><span style="font-size:10px;">${e.message}</span></div>`;
+  // 전북특별자치도교육청 J10, 여산초등학교 코드 후보 시도
+  const candidates = [
+    {office:'P10', school:'8352124'},
+  ];
+
+  for (const {office, school} of candidates) {
+    try {
+      const url = `https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${office}&SD_SCHUL_CODE=${school}&MLSV_YMD=${dateStr}`;
+      const res  = await fetch(url);
+      const json = await res.json();
+      const code = json?.RESULT?.CODE || json?.mealServiceDietInfo?.[0]?.head?.[1]?.RESULT?.CODE;
+      if (code === 'INFO-200') { el.innerHTML='<div style="font-size:12px;color:var(--text3);">오늘 급식 정보가 없습니다.<br><span style="font-size:11px;">(방학 또는 미등록)</span></div>'; return; }
+      const rows = json?.mealServiceDietInfo?.[1]?.row;
+      if (!rows?.length) continue;
+      const meal   = rows[0];
+      const dishes = (meal.DDISH_NM||'').replace(/<br\/>/g,'\n').split('\n').map(s=>s.replace(/\s*\([\d.]+\)/g,'').trim()).filter(Boolean);
+      const cal    = meal.CAL_INFO||'';
+      el.innerHTML = `
+        <div style="font-size:12.5px;line-height:1.9;">
+          ${dishes.map(s=>`<div style="display:flex;align-items:center;gap:5px;"><span style="color:var(--accent);font-size:9px;">●</span>${s}</div>`).join('')}
+        </div>
+        ${cal?`<div style="font-size:10px;color:var(--text3);margin-top:6px;font-family:'DM Mono',monospace;">${cal}</div>`:''}`;
+      return;
+    } catch(e) { continue; }
   }
+  // 모두 실패 시 학교코드 직접 조회 시도
+  el.innerHTML=`<div style="font-size:11px;color:var(--text3);">급식 정보를 불러올 수 없습니다.<br>
+    <a href="https://open.neis.go.kr/portal/data/service/selectServicePage.do?page=1&rows=10&infId=OPEN17020190531110010104913&infSeq=1" target="_blank" style="color:var(--accent);font-size:10px;">학교코드 확인 →</a></div>`;
 }
 
 /* ── 공지 팝업 모달 ── */
