@@ -642,7 +642,7 @@ function renderInst() {
       const times = [...new Set(todayItems.map(i=>i.time))].sort();
       te.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:300px;">
         <thead><tr style="border-bottom:1.5px solid var(--border2);">
-          <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);width:110px;">시간</th>
+          <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);width:80px;">교시</th>
           ${Object.keys(subjMap).map(s=>`<th style="padding:6px 10px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);">${s}</th>`).join('')}
         </tr></thead>
         <tbody>
@@ -650,7 +650,7 @@ function renderInst() {
             const row = todayItems.filter(i=>i.time===t);
             const sr = {}; row.forEach(i=>{ if(!sr[i.subject]) sr[i.subject]=[]; sr[i.subject].push(i); });
             return `<tr style="border-bottom:1px solid var(--border);">
-              <td style="padding:7px 10px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;background:var(--surface2);">${t}</td>
+              <td style="padding:7px 10px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);">${t}</td>
               ${Object.keys(subjMap).map(s => {
                 const c=sr[s]||[];
                 return c.length ? `<td style="padding:7px 10px;text-align:center;">${c.map(i=>`<span class="chip ${SUBJ_COLOR[s]||'cgray'}" style="font-size:11px;">${i.grade||''}</span>`).join(' ')}</td>`
@@ -678,7 +678,7 @@ function renderInst() {
           </div>
           ${list.map(i=>`
             <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px;">
-              <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);min-width:100px;">${i.time||''}</span>
+              <span style="font-size:12px;font-weight:600;color:var(--text2);min-width:60px;">${i.time||''}</span>
               <span style="font-weight:500;color:var(--accent);">${i.grade||''}</span>
               <span style="font-size:11px;color:var(--text3);">${i.room||''}</span>
             </div>`).join('')}
@@ -745,7 +745,7 @@ function renderInstMonth() {
           <table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:360px;">
             <thead>
               <tr style="border-bottom:1.5px solid var(--border2);">
-                <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);width:110px;">시간</th>
+                <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);width:80px;">교시</th>
                 ${Object.keys(subjMap).map(s=>`
                   <th style="padding:6px 10px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);">${s}</th>
                 `).join('')}
@@ -757,7 +757,7 @@ function renderInstMonth() {
                 const subjRow = {};
                 row.forEach(i=>{ if(!subjRow[i.subject]) subjRow[i.subject]=[]; subjRow[i.subject].push(i); });
                 return `<tr style="border-bottom:1px solid var(--border);">
-                  <td style="padding:7px 10px;font-size:11.5px;color:var(--text3);font-family:'DM Mono',monospace;background:var(--surface2);">${t}</td>
+                  <td style="padding:7px 10px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);">${t}</td>
                   ${Object.keys(subjMap).map(s => {
                     const cell = subjRow[s]||[];
                     if (!cell.length) return `<td style="padding:7px 10px;"></td>`;
@@ -918,7 +918,7 @@ function buildForm(t,v={}) {
     <div class="fg"><label>상세 (선택)</label><input id="f-detail" value="${v.detail||''}"></div>`;
   if (t==='instructor') return `
     <div class="fg"><label>요일</label><select id="f-dow">${[['1','월'],['2','화'],['3','수'],['4','목'],['5','금']].map(([val,lb])=>`<option value="${val}" ${String(v.dayOfWeek)===val?'selected':''}>${lb}요일</option>`).join('')}</select></div>
-    <div class="fg"><label>시간 (예: 09:00~09:40)</label><input id="f-time" value="${v.time||''}"></div>
+    <div class="fg"><label>교시</label><select id="f-time">${[1,2,3,4,5,6].map(p=>`<option value="${p}교시" ${v.time===p+'교시'?'selected':''}>${p}교시</option>`).join('')}</select></div>
     <div class="fg"><label>수업명</label><input id="f-subject" placeholder="체육 (스포츠 강사)" value="${v.subject||''}"></div>
     <div class="fg"><label>학년</label><input id="f-grade" value="${v.grade||''}"></div>
     <div class="fg"><label>장소</label><input id="f-room" value="${v.room||''}"></div>
@@ -990,7 +990,7 @@ window.del=async(coll,id)=>{ if(!confirm('삭제하시겠습니까?'))return; aw
 const TMPL={
   calendar:   {comment:'# type: holiday=공휴일(빨간표시) / 비워두면 일반일정', headers:['year','month','day','name','detail','type'],
                 rows:[[2026,4,16,'세월호 10주기 추모 활동','전 학급 학습지',''],[2026,5,5,'어린이날','휴업일','holiday']]},
-  instructor: {comment:'# 날짜지정: year,month,day 입력 / 요일고정: dayOfWeek만 입력(1=월~5=금)', headers:['year','month','day','dayOfWeek','time','subject','grade','room','detail'],rows:[[2026,4,2,'','09:00~10:20','공예수업','1학년','무한상상실','1~2교시'],['','','',1,'09:00~09:40','연극수업','1-6학년','강당','학년별 순환']]},
+  instructor: {comment:'# 날짜지정: year,month,day 입력 / 요일고정: dayOfWeek만 입력(1=월~5=금)', headers:['year','month','day','dayOfWeek','time','subject','grade','room','detail'],rows:[[2026,4,2,'','1교시','공예수업','1학년','무한상상실','1교시'],['','','',1,'2교시','연극수업','1-6학년','강당','학년별 순환']]},
   afterschool:{comment:'# type: 맞춤형 / 선택형(교육) / 선택형(돌봄)  |  day: 1=월 2=화 3=수 4=목 5=금', headers:['className','day','time','program','type','location','target'],
               rows:[['늘봄1반',1,'13:10~13:50','미술','맞춤형','조리실습실','초1'],['늘봄1반',1,'14:00~14:40','놀이체육','맞춤형','강당','초1'],['늘봄1반',2,'14:00~14:40','컴퓨터','맞춤형','컴퓨터실','초1'],['늘봄2반',1,'14:00~14:40','놀이체육','맞춤형','강당','초2']]}
 };
