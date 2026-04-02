@@ -646,93 +646,94 @@ function dedupeInst(items) {
 /* ── 협력수업 테이블 빌더 (연속교시 자동 rowspan 병합) ── */
 function buildInstTable(items, SUBJ_COLOR) {
   const subjects = [...new Set(items.map(i=>i.subject))];
+  if (!subjects.length) return '';
 
-  // 각 아이템에 교시 번호 부여 (시작 교시 기준 정렬)
-  function periodNum(time) {
+  // 교시 번호 추출
+  function pNum(time) {
     const t = toperiod(time||'');
     const m = t.match(/^(\d+)/);
     return m ? +m[1] : 99;
   }
 
-  // 교시 1~6 전체 행 구성
-  const allPeriods = [1,2,3,4,5,6];
-
-  // 각 subject × period 에 해당하는 항목 매핑
-  const cellMap = {}; // cellMap[subject][period] = item or null
+  // subject × period 매핑
+  const cellMap = {};
   subjects.forEach(s => {
     cellMap[s] = {};
     items.filter(i=>i.subject===s).forEach(i => {
-      const p = periodNum(i.time);
+      const p = pNum(i.time);
       if (!cellMap[s][p]) cellMap[s][p] = i;
     });
   });
 
-  // 사용된 교시만 (빈 행 제거)
-  const usedPeriods = allPeriods.filter(p =>
-    subjects.some(s => cellMap[s][p])
-  );
-
+  // 사용된 교시 (1~6 중 데이터 있는 것만, 정렬)
+  const usedPeriods = [1,2,3,4,5,6].filter(p => subjects.some(s => cellMap[s][p]));
   if (!usedPeriods.length) return '';
 
-  // ★ 연속교시 병합을 적용할 수업명 목록
-  const MERGE_SUBJECTS = ['공예수업'];
-
-  // rowspan 계산
-  const skip = {};
-  const rowspan = {};
+  // 모든 수업 연속교시 병합 대상
+  // skip[s][p]: 이미 위 rowspan에 포함된 셀 → td 출력 안 함
+  // rowspan[s][p]: 이 셀이 차지할 행 수
+  const skip = {}, rowspan = {};
   subjects.forEach(s => {
     skip[s] = {};
     rowspan[s] = {};
-    const doMerge = MERGE_SUBJECTS.includes(s);
     usedPeriods.forEach((p, idx) => {
       if (skip[s][p]) return;
       const item = cellMap[s][p];
-      if (!item) return;
+      if (!item) { rowspan[s][p] = 1; return; }
       let span = 1;
-      if (doMerge) {
-        for (let j = idx+1; j < usedPeriods.length; j++) {
-          const np = usedPeriods[j];
-          if (np !== usedPeriods[j-1]+1) break;
-          const next = cellMap[s][np];
-          if (!next || next.grade !== item.grade) break;
-          skip[s][np] = true;
-          span++;
-        }
+      for (let j = idx+1; j < usedPeriods.length; j++) {
+        const np = usedPeriods[j];
+        // 교시가 바로 연속이고 같은 학년이면 병합
+        if (np !== usedPeriods[j-1]+1) break;
+        const next = cellMap[s][np];
+        if (!next || next.grade !== item.grade) break;
+        skip[s][np] = true;
+        span++;
       }
       rowspan[s][p] = span;
     });
   });
 
-  // 교시 열도 rowspan: 모든 subject가 skip인 교시는 생략
-  const periodSkip = {};
-  const periodRowspan = {};
-  for (let idx = 0; idx < usedPeriods.length; idx++) {
-    const p = usedPeriods[idx];
-    if (periodSkip[p]) continue;
-    // 이 교시에서 실제로 새 셀이 렌더되는 subject가 있는지 확인하여
-    // 교시 셀은 항상 표시 (rowspan 1)
-    periodRowspan[p] = 1;
-  }
+  // 교시 셀 rowspan: 모든 subject가 skip인 행은 교시 셀도 출력 안 함
+  // → 대신 앞 행의 교시 셀을 rowspan으로 확장
+  const periodSkip = {};   // 이 교시 행 전체를 건너뜀
+  const periodRs = {};     // 교시 셀 rowspan
+  usedPeriods.forEach((p, idx) => {
+    if (periodSkip[p]) return;
+    // 이 교시에서 새로 시작하는 셀이 있는 subject 확인
+    const anyNew = subjects.some(s => !skip[s][p] && cellMap[s][p]);
+    // 연속으로 모든 subject가 rowspan에 덮여 있는 교시 수 계산
+    let rs = 1;
+    for (let j = idx+1; j < usedPeriods.length; j++) {
+      const np = usedPeriods[j];
+      if (np !== usedPeriods[j-1]+1) break;
+      // 이 교시에 새로 시작하는 subject가 없으면 교시 셀 병합
+      if (subjects.every(s => skip[s][np])) {
+        periodSkip[np] = true;
+        rs++;
+      } else break;
+    }
+    periodRs[p] = rs;
+  });
 
-  // 테이블 rows 생성
+  // 테이블 행 생성
   let rows = '';
   usedPeriods.forEach(p => {
-    if (periodSkip[p]) return; // 이 교시는 이미 위 rowspan에 포함 → 하지만 교시 셀은 별도 처리 필요
-    // 이 행이 완전히 skip되는지 (교시 셀 기준)
-    // → 아니다. 교시 셀은 항상 있고, 각 subject 셀이 skip이면 td 안 찍음
+    if (periodSkip[p]) return; // 교시 셀 행 생략 (위 rowspan이 커버)
+    const pRs = periodRs[p] || 1;
+    const pRsAttr = pRs > 1 ? ` rowspan="${pRs}"` : '';
     rows += `<tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:7px 10px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);text-align:center;">${p}교시</td>
+      <td${pRsAttr} style="padding:7px 10px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);text-align:center;vertical-align:middle;">
+        ${pRs > 1 ? `${p}~${p+pRs-1}교시` : `${p}교시`}
+      </td>
       ${subjects.map(s => {
-        if (skip[s][p]) return ''; // 위 rowspan이 커버
+        if (skip[s][p]) return ''; // 이미 위 rowspan이 커버
         const item = cellMap[s][p];
-        const rs = rowspan[s][p] || 1;
-        const chipColor = SUBJ_COLOR[s] || 'cgray';
         if (!item) return `<td style="padding:7px 10px;"></td>`;
+        const rs = rowspan[s][p] || 1;
         const rsAttr = rs > 1 ? ` rowspan="${rs}"` : '';
-        const borderB = rs > 1 ? 'border-bottom:2px solid var(--border2);' : '';
-        return `<td${rsAttr} style="padding:7px 10px;text-align:center;vertical-align:middle;${borderB}">
-          <span class="chip ${chipColor}" style="font-size:11px;">${item.grade||''}</span>
-          ${rs > 1 ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;">${p}~${p+rs-1}교시</div>` : ''}
+        return `<td${rsAttr} style="padding:7px 10px;text-align:center;vertical-align:middle;">
+          <span class="chip ${SUBJ_COLOR[s]||'cgray'}" style="font-size:11px;">${item.grade||''}</span>
         </td>`;
       }).join('')}
     </tr>`;
@@ -742,7 +743,7 @@ function buildInstTable(items, SUBJ_COLOR) {
     <div style="overflow-x:auto;">
       <table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:300px;">
         <thead><tr style="border-bottom:1.5px solid var(--border2);">
-          <th style="padding:6px 10px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);width:70px;">교시</th>
+          <th style="padding:6px 10px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);width:80px;">교시</th>
           ${subjects.map(s=>`<th style="padding:6px 10px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);">${s}</th>`).join('')}
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -778,7 +779,7 @@ function renderInst() {
     } else {
       const subjMap = {};
       todayItems.forEach(i => { if(!subjMap[i.subject]) subjMap[i.subject]=[]; subjMap[i.subject].push(i); });
-      const HOME_MERGE = ['공예수업'];
+      const HOME_MERGE = ['공예수업', '연극수업'];
       homeInst.innerHTML = Object.entries(subjMap).map(([subj, list]) => {
         const sorted = list.slice().sort((a,b)=> {
           const pa = toperiod(a.time||'').match(/^(\d+)/); const pb = toperiod(b.time||'').match(/^(\d+)/);
