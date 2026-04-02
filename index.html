@@ -654,64 +654,40 @@ function buildInstTable(items, SUBJ_COLOR) {
     return m ? +m[1] : 99;
   }
 
-  // subject별로 연속 같은학년 그룹화
-  // groups[s] = [{startP, endP, grade}, ...]
-  const groups = {};
+  // subject × period 매핑
+  const cellMap = {};
   subjects.forEach(s => {
-    groups[s] = [];
-    const periods = items
-      .filter(i=>i.subject===s)
-      .map(i=>({p:pNum(i.time), grade:i.grade}))
-      .sort((a,b)=>a.p-b.p);
-    periods.forEach(({p, grade}) => {
-      const last = groups[s][groups[s].length-1];
-      if (last && last.grade === grade && last.endP === p-1) {
-        last.endP = p;
-      } else {
-        groups[s].push({startP:p, endP:p, grade});
-      }
+    cellMap[s] = {};
+    items.filter(i=>i.subject===s).forEach(i => {
+      const p = pNum(i.time);
+      if (!cellMap[s][p]) cellMap[s][p] = i;
     });
   });
 
-  // 모든 subject의 모든 그룹 startP를 모아 행 순서 결정
-  const allStartPs = [...new Set(
-    subjects.flatMap(s => groups[s].map(g => g.startP))
-  )].sort((a,b)=>a-b);
+  // 사용된 교시 목록
+  const usedPeriods = [1,2,3,4,5,6].filter(p =>
+    subjects.some(s => cellMap[s][p])
+  );
+  if (!usedPeriods.length) return '';
 
-  if (!allStartPs.length) return '';
-
-  const rows = allStartPs.map(rowP => {
-    // 이 행(rowP)에서 각 subject의 그룹 찾기
-    const cellsHtml = subjects.map(s => {
-      const g = groups[s].find(g => g.startP === rowP);
-      if (!g) return `<td style="padding:10px 14px;border-left:1px solid var(--border);"></td>`;
-      const label = g.startP === g.endP ? `${g.startP}교시` : `${g.startP}~${g.endP}교시`;
-      return `<td style="padding:10px 14px;text-align:center;vertical-align:middle;border-left:1px solid var(--border);">
-        <span class="chip ${SUBJ_COLOR[s]||'cgray'}" style="font-size:12px;">${g.grade||''}</span>
-        <div style="font-size:10px;color:var(--text3);margin-top:3px;">${label}</div>
-      </td>`;
-    }).join('');
-
-    // 교시 셀: 이 행에 있는 그룹들의 교시 범위 표시
-    const labels = subjects
-      .map(s => groups[s].find(g => g.startP === rowP))
-      .filter(Boolean)
-      .map(g => g.startP === g.endP ? `${g.startP}교시` : `${g.startP}~${g.endP}교시`);
-    const uniqueLabels = [...new Set(labels)];
-    const periodLabel = uniqueLabels.length === 1 ? uniqueLabels[0] : `${rowP}교시~`;
-
-    return `<tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:10px 14px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);text-align:center;vertical-align:middle;white-space:nowrap;">${periodLabel}</td>
-      ${cellsHtml}
-    </tr>`;
-  }).join('');
+  const rows = usedPeriods.map(p => `
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:9px 12px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);text-align:center;white-space:nowrap;">${p}교시</td>
+      ${subjects.map(s => {
+        const item = cellMap[s][p];
+        if (!item) return `<td style="padding:9px 12px;"></td>`;
+        return `<td style="padding:9px 12px;text-align:center;vertical-align:middle;">
+          <span class="chip ${SUBJ_COLOR[s]||'cgray'}" style="font-size:12px;">${item.grade||''}</span>
+        </td>`;
+      }).join('')}
+    </tr>`).join('');
 
   return `
     <div style="overflow-x:auto;">
       <table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:300px;">
         <thead><tr style="border-bottom:1.5px solid var(--border2);">
-          <th style="padding:8px 14px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);width:90px;">교시</th>
-          ${subjects.map(s=>`<th style="padding:8px 14px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);border-left:1px solid var(--border);">${s}</th>`).join('')}
+          <th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);width:80px;">교시</th>
+          ${subjects.map(s=>`<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);">${s}</th>`).join('')}
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
