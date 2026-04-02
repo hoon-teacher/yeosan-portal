@@ -654,7 +654,42 @@ function buildInstTable(items, SUBJ_COLOR) {
     return m ? +m[1] : 99;
   }
 
-  // subject × period 매핑
+  // 공예수업만 있는 날: 1~2교시, 3~4교시, 5~6교시로 묶어서 표시
+  const craftOnly = subjects.length === 1 && subjects[0] === '공예수업';
+
+  if (craftOnly) {
+    // 교시별 데이터 수집
+    const byPeriod = {};
+    items.forEach(i => {
+      const p = pNum(i.time);
+      byPeriod[p] = i;
+    });
+    // 2교시 단위로 그룹핑
+    const pairs = [[1,2],[3,4],[5,6]].filter(([a,b]) => byPeriod[a] || byPeriod[b]);
+    const rows = pairs.map(([a,b]) => {
+      const item = byPeriod[a] || byPeriod[b];
+      const label = (byPeriod[a] && byPeriod[b]) ? `${a}~${b}교시` : `${byPeriod[a]?a:b}교시`;
+      return `<tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:9px 12px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);text-align:center;white-space:nowrap;">${label}</td>
+        <td style="padding:9px 12px;text-align:center;vertical-align:middle;">
+          <span class="chip ${SUBJ_COLOR['공예수업']||'cgray'}" style="font-size:12px;">${item.grade||''}</span>
+        </td>
+      </tr>`;
+    }).join('');
+
+    return `
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:300px;">
+          <thead><tr style="border-bottom:1.5px solid var(--border2);">
+            <th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);width:80px;">교시</th>
+            <th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);">공예수업</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  // 혼합(공예+연극 등): 병합 없이 교시별로 그냥 표시
   const cellMap = {};
   subjects.forEach(s => {
     cellMap[s] = {};
@@ -664,7 +699,6 @@ function buildInstTable(items, SUBJ_COLOR) {
     });
   });
 
-  // 사용된 교시 목록
   const usedPeriods = [1,2,3,4,5,6].filter(p =>
     subjects.some(s => cellMap[s][p])
   );
