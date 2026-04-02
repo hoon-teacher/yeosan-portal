@@ -644,7 +644,7 @@ function dedupeInst(items) {
 }
 
 /* ── 협력수업 테이블 빌더 ── */
-function buildInstTable(items, SUBJ_COLOR) {
+function buildInstTable(items, SUBJ_COLOR, dayItems) {
   const subjects = [...new Set(items.map(i=>i.subject))];
   if (!subjects.length) return '';
 
@@ -654,42 +654,7 @@ function buildInstTable(items, SUBJ_COLOR) {
     return m ? +m[1] : 99;
   }
 
-  // 공예수업만 있는 날: 1~2교시, 3~4교시, 5~6교시로 묶어서 표시
-  const craftOnly = subjects.length === 1 && subjects[0] === '공예수업';
-
-  if (craftOnly) {
-    // 교시별 데이터 수집
-    const byPeriod = {};
-    items.forEach(i => {
-      const p = pNum(i.time);
-      byPeriod[p] = i;
-    });
-    // 2교시 단위로 그룹핑
-    const pairs = [[1,2],[3,4],[5,6]].filter(([a,b]) => byPeriod[a] || byPeriod[b]);
-    const rows = pairs.map(([a,b]) => {
-      const item = byPeriod[a] || byPeriod[b];
-      const label = (byPeriod[a] && byPeriod[b]) ? `${a}~${b}교시` : `${byPeriod[a]?a:b}교시`;
-      return `<tr style="border-bottom:1px solid var(--border);">
-        <td style="padding:9px 12px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);text-align:center;white-space:nowrap;">${label}</td>
-        <td style="padding:9px 12px;text-align:center;vertical-align:middle;">
-          <span class="chip ${SUBJ_COLOR['공예수업']||'cgray'}" style="font-size:12px;">${item.grade||''}</span>
-        </td>
-      </tr>`;
-    }).join('');
-
-    return `
-      <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:300px;">
-          <thead><tr style="border-bottom:1.5px solid var(--border2);">
-            <th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);width:80px;">교시</th>
-            <th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);">공예수업</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
-  }
-
-  // 혼합(공예+연극 등): 병합 없이 교시별로 그냥 표시
+  // subject × period 매핑 (id도 보관)
   const cellMap = {};
   subjects.forEach(s => {
     cellMap[s] = {};
@@ -699,19 +664,23 @@ function buildInstTable(items, SUBJ_COLOR) {
     });
   });
 
-  const usedPeriods = [1,2,3,4,5,6].filter(p =>
-    subjects.some(s => cellMap[s][p])
-  );
-  if (!usedPeriods.length) return '';
+  const allPeriods = [1,2,3,4,5,6];
 
-  const rows = usedPeriods.map(p => `
+  const rows = allPeriods.map(p => `
     <tr style="border-bottom:1px solid var(--border);">
       <td style="padding:9px 12px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);text-align:center;white-space:nowrap;">${p}교시</td>
       ${subjects.map(s => {
         const item = cellMap[s][p];
-        if (!item) return `<td style="padding:9px 12px;"></td>`;
-        return `<td style="padding:9px 12px;text-align:center;vertical-align:middle;">
-          <span class="chip ${SUBJ_COLOR[s]||'cgray'}" style="font-size:12px;">${item.grade||''}</span>
+        const grade = item?.grade || '';
+        const id = item?.id || '';
+        const chipColor = SUBJ_COLOR[s] || 'cgray';
+        return `<td style="padding:6px 12px;text-align:center;vertical-align:middle;">
+          ${grade
+            ? `<span class="chip ${chipColor}" style="font-size:12px;cursor:pointer;"
+                onclick="editInstCell('${id}','${s}','${p}','${grade}')">${grade}</span>`
+            : `<span style="font-size:11px;color:var(--border2);cursor:pointer;"
+                onclick="editInstCell('','${s}','${p}','')">＋</span>`
+          }
         </td>`;
       }).join('')}
     </tr>`).join('');
@@ -844,6 +813,49 @@ function renderInstMonth() {
 
 window.instPrev = () => { instM--; if(instM<1){instM=12;instY--;} renderInstMonth(); };
 window.instNext = () => { instM++; if(instM>12){instM=1;instY++;} renderInstMonth(); };
+
+/* ── 협력수업 셀 직접 수정 ── */
+window.editInstCell = async (id, subject, period, currentGrade) => {
+  const GRADES = ['','1학년','2학년','3학년','4학년','5학년','6학년'];
+  const newGrade = prompt(
+    `${period}교시 ${subject}\n학년을 입력하세요 (1~6학년, 비우면 삭제):`,
+    currentGrade
+  );
+  if (newGrade === null) return; // 취소
+
+  const gradeVal = newGrade.trim();
+
+  if (id && !gradeVal) {
+    // 기존 데이터 삭제
+    if (confirm('이 교시 수업을 삭제하시겠습니까?')) {
+      await deleteDoc(doc(db,'instructors',id));
+    }
+    return;
+  }
+
+  if (!gradeVal) return;
+
+  // 학년 형식 정리 (1 → 1학년, 1학년 → 1학년)
+  const grade = gradeVal.includes('학년') ? gradeVal : gradeVal + '학년';
+
+  if (id) {
+    // 기존 데이터 수정
+    await updateDoc(doc(db,'instructors',id), { grade });
+  } else {
+    // 새 데이터 추가 — 현재 보고 있는 월의 날짜를 특정해야 하므로 날짜 입력 받기
+    const dateStr = prompt('날짜를 입력하세요 (예: 4/6)', `${instM}/`);
+    if (!dateStr) return;
+    const parts = dateStr.split('/');
+    const month = +parts[0], day = +parts[1];
+    if (!month || !day) { alert('날짜 형식이 올바르지 않습니다.'); return; }
+    await addDoc(collection(db,'instructors'), {
+      year: instY, month, day,
+      time: period + '교시',
+      subject, grade,
+      room: '', detail: ''
+    });
+  }
+};
 
 
 /* ── 늘봄학교 ── */
