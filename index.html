@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>여산초 교직원 포털</title>
+<title>🌸 여산초 선생님방</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -243,8 +243,8 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 <div class="shell">
   <aside class="sidebar">
     <div class="logo">
-      <div class="logo-school">🌸 여산초등학교</div>
-      <div class="logo-sub">교직원 포털</div>
+      <div class="logo-school">🌸 여산초 선생님방</div>
+      <div class="logo-sub">우리 학교 정보 모아보기</div>
       <div class="logo-date" id="sb-date"></div>
       <div style="margin-top:8px;font-size:10px;color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.15);border-radius:20px;padding:3px 10px;display:inline-block;">🌸 벚꽃 시즌</div>
     </div>
@@ -278,26 +278,13 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       </div>
       <div id="urgent-wrap"></div>
 
-      <!-- 상단 요약 바 -->
-      <div id="summary-bar" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-        <!-- 날씨 -->
-        <div class="card" style="margin-bottom:0;padding:14px 18px;">
-          <div class="clabel" style="margin-bottom:8px;">🌤 오늘 날씨 · 여산</div>
-          <div id="home-weather"><div style="font-size:12px;color:var(--text3);">불러오는 중...</div></div>
-        </div>
-        <!-- 급식 -->
-        <div class="card" style="margin-bottom:0;padding:14px 18px;">
-          <div class="clabel" style="margin-bottom:8px;">🍱 오늘 급식</div>
-          <div id="home-meal"><div style="font-size:12px;color:var(--text3);">불러오는 중...</div></div>
-        </div>
-      </div>
-
-      <div class="hgrid">
-        <div class="card">
+      <!-- 1순위: 공지사항 + 학사일정 -->
+      <div class="hgrid" style="margin-bottom:16px;">
+        <div class="card" style="margin-bottom:0;">
           <div class="crow"><span class="clabel">📢 공지사항</span><button class="blnk" onclick="go('notice',document.querySelector('[data-p=notice]'))">전체보기 →</button></div>
           <ul class="nlist" id="home-notices"></ul>
         </div>
-        <div class="card" style="grid-row:span 3;">
+        <div class="card" style="grid-row:span 2;margin-bottom:0;">
           <div class="crow"><span class="clabel">📅 학사일정</span><button class="blnk" onclick="go('calendar',document.querySelector('[data-p=calendar]'))">전체보기 →</button></div>
           <div class="calnr">
             <button class="calbtn" onclick="hPrev()">◂</button>
@@ -307,12 +294,24 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
           <div class="calgrid" id="h-cal-grid"></div>
           <div id="h-cal-events" style="margin-top:14px;"></div>
         </div>
-        <div class="card">
+        <div class="card" style="margin-bottom:0;">
           <div class="crow"><span class="clabel">👨‍🏫 오늘의 협력수업</span><button class="blnk" onclick="go('instructor',document.querySelector('[data-p=instructor]'))">전체보기 →</button></div>
           <div id="home-inst"></div>
         </div>
-        <div class="card">
-          <div class="clabel">🔗 빠른 링크</div>
+      </div>
+
+      <!-- 2순위: 날씨·급식·빠른링크 -->
+      <div id="summary-bar" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div class="card" style="margin-bottom:0;padding:14px 18px;">
+          <div class="clabel" style="margin-bottom:8px;">🌤 오늘 날씨 · 여산</div>
+          <div id="home-weather"><div style="font-size:12px;color:var(--text3);">불러오는 중...</div></div>
+        </div>
+        <div class="card" style="margin-bottom:0;padding:14px 18px;">
+          <div class="clabel" style="margin-bottom:8px;">🍱 오늘 급식</div>
+          <div id="home-meal"><div style="font-size:12px;color:var(--text3);">불러오는 중...</div></div>
+        </div>
+        <div class="card" style="margin-bottom:0;padding:14px 18px;">
+          <div class="clabel" style="margin-bottom:8px;">🔗 빠른 링크</div>
           <div id="home-links"></div>
         </div>
       </div>
