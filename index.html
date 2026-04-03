@@ -273,7 +273,10 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <!-- 홈 -->
     <div class="page active" id="page-home">
       <div class="ph">
-        <div class="pt">오늘의 현황</div>
+        <div>
+          <div id="quote-text" style="font-size:16px;font-weight:600;letter-spacing:-.02em;line-height:1.5;color:var(--text);"></div>
+          <div id="quote-author" style="font-size:12px;color:var(--text3);margin-top:4px;"></div>
+        </div>
         <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;" id="home-date"></div>
       </div>
       <div id="urgent-wrap"></div>
@@ -524,6 +527,46 @@ let curModal=null, editId=null, upSec=null, curTab='전체', curTabGroup='class'
 const fmt = d=>`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${DAYS[d.getDay()]})`;
 document.getElementById('sb-date').textContent   = fmt(today);
 document.getElementById('home-date').textContent = fmt(today);
+
+/* ── 오늘의 명언 (날짜 기반 순환) ── */
+const QUOTES = [
+  { text: "가르치는 것은 두 번 배우는 것이다.", author: "조제프 주베르" },
+  { text: "교육의 목적은 빈 그릇을 채우는 것이 아니라, 불을 지피는 것이다.", author: "윌리엄 버틀러 예이츠" },
+  { text: "인간은 교육을 통해서만 인간이 될 수 있다.", author: "임마누엘 칸트" },
+  { text: "스스로를 극복하는 것, 그것이 진정한 성장이다.", author: "프리드리히 니체" },
+  { text: "자신을 알라. 그것이 모든 지혜의 시작이다.", author: "소크라테스" },
+  { text: "교육이란 학교에서 배운 것을 잊어버린 후에 남은 것이다.", author: "알베르트 아인슈타인" },
+  { text: "우리가 심는 씨앗은 다음 세대가 그늘을 즐길 나무가 된다.", author: "워런 버핏" },
+  { text: "위버멘쉬는 스스로 가치를 창조하는 자이다.", author: "프리드리히 니체" },
+  { text: "교육의 진정한 목적은 행동하는 능력을 가르치는 것이다.", author: "허버트 스펜서" },
+  { text: "어린이는 어른의 아버지이다.", author: "윌리엄 워즈워스" },
+  { text: "신은 죽었다. 이제 우리가 의미를 만들어야 한다.", author: "프리드리히 니체" },
+  { text: "가장 위대한 교육자는 아이들 스스로이다.", author: "장 피아제" },
+  { text: "미래를 예측하는 가장 좋은 방법은 미래를 만드는 것이다.", author: "피터 드러커" },
+  { text: "우리는 우리가 반복적으로 하는 것으로 이루어진다.", author: "아리스토텔레스" },
+  { text: "삶이란 그것을 되돌아볼 때만 이해할 수 있지만, 앞을 향해 살아야 한다.", author: "쇠렌 키르케고르" },
+  { text: "자신의 삶을 사랑하라. 그것이 운명이니.", author: "프리드리히 니체" },
+  { text: "의심은 지식의 시작이다.", author: "르네 데카르트" },
+  { text: "교육은 세상을 바꾸는 데 사용할 수 있는 가장 강력한 무기이다.", author: "넬슨 만델라" },
+  { text: "생각하는 것을 가르쳐라, 무엇을 생각할지를 가르치지 말고.", author: "마가렛 미드" },
+  { text: "강물은 흘러야 맑다. 사람도 계속 배워야 맑아진다.", author: "공자" },
+  { text: "고통 없이는 성장도 없다.", author: "프리드리히 니체" },
+  { text: "나는 아무것도 모른다는 것을 안다.", author: "소크라테스" },
+  { text: "교육이란 무지를 점차 줄여나가는 과정이다.", author: "윌 듀런트" },
+  { text: "진정한 지식은 자신의 무지를 아는 것에서 시작된다.", author: "공자" },
+  { text: "삶의 의미를 찾는 자만이 진정으로 살아있다.", author: "빅토르 프랭클" },
+  { text: "인간은 스스로 만들어가는 존재이다.", author: "장 폴 사르트르" },
+  { text: "어제의 나를 넘어서는 것, 그것으로 충분하다.", author: "프리드리히 니체" },
+  { text: "씨를 뿌리는 사람이 있어야 꽃이 핀다. 교사가 그 사람이다.", author: "리처드 리브스" },
+  { text: "좋은 교사는 문을 열어줄 뿐, 들어가는 것은 학생 스스로이다.", author: "중국 속담" },
+  { text: "사람은 배움으로써 자신의 무지를 깨닫는다.", author: "공자" },
+];
+
+// 날짜 기반 인덱스 (매일 바뀜)
+const dayIndex = Math.floor(today.getTime() / (1000*60*60*24));
+const q = QUOTES[dayIndex % QUOTES.length];
+document.getElementById('quote-text').textContent   = `"${q.text}"`;
+document.getElementById('quote-author').textContent = `— ${q.author}`;
 
 /* ── 네비 ── */
 window.go = (pid, el) => {
