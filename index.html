@@ -751,7 +751,7 @@ function renderInst() {
     i.year && +i.year===today.getFullYear() && +i.month===today.getMonth()+1 && +i.day===today.getDate()
   ));
 
-  const SUBJ_COLOR = { '공예수업':'camber', '연극수업':'cblue', '보건수업':'cgreen' };
+  const SUBJ_COLOR = { '공예수업':'camber', '연극수업':'cblue', '보건수업':'cgreen', '집단상담':'cred' };
 
   const te = document.getElementById('inst-today');
   if (te) {
@@ -816,7 +816,7 @@ function renderInstMonth() {
   if (!dated.length) { listEl.innerHTML='<div class="empty">이달 등록된 협력수업 일정이 없습니다.</div>'; return; }
 
   const DOW_KR = ['일','월','화','수','목','금','토'];
-  const SUBJ_COLOR = { '공예수업':'camber', '연극수업':'cblue', '보건수업':'cgreen' };
+  const SUBJ_COLOR = { '공예수업':'camber', '연극수업':'cblue', '보건수업':'cgreen', '집단상담':'cred' };
 
   const dayMap = {};
   dated.forEach(i => {
