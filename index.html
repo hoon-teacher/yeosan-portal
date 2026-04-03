@@ -424,7 +424,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
         <div class="pt">공유 링크</div>
         <button class="btn bp" onclick="openModal('link')">+ 추가</button>
       </div>
-      <div class="card"><div class="lgrid" id="links-grid"></div></div>
+      <div class="card"><div id="links-grid"></div></div>
     </div>
 
     <!-- 공간 예약 -->
@@ -574,6 +574,7 @@ onSnapshot(collection(db,'afterschool'), snap => {
 
 onSnapshot(collection(db,'links'), snap => {
   allLinks = snap.docs.map(d=>({id:d.id,...d.data()}));
+  allLinks.sort((a,b) => (a.order??999) - (b.order??999));
   renderLinks('links-grid', allLinks, true);
   renderQuickLinks(allLinks.slice(0,5));
 });
@@ -980,20 +981,78 @@ window.renderAfter = (tab, tabGroup) => {
 
 /* ── 링크 ── */
 function renderLinks(id, links, edit) {
-  const el=document.getElementById(id); if (!el) return;
+  const el = document.getElementById(id); if (!el) return;
   if (!links.length) { el.innerHTML='<div class="empty">등록된 링크가 없습니다.</div>'; return; }
-  el.innerHTML=links.map(l=>`
-    <a class="lcard" href="${l.url}" target="_blank" rel="noopener">
-      <div class="licon">${l.icon||'🔗'}</div>
-      <div class="lname">${l.name}</div>
-      <div class="ldesc">${l.desc||''}</div>
-      <div class="ltag">바로가기 ↗</div>
-      ${edit?`<div class="ledit" onclick="event.preventDefault()">
+
+  el.innerHTML = links.map((l,idx) => `
+    <div class="draggable-link"
+      draggable="${edit?'true':'false'}"
+      data-id="${l.id}" data-idx="${idx}"
+      ondragstart="linkDragStart(event)"
+      ondragover="linkDragOver(event)"
+      ondrop="linkDrop(event)"
+      ondragend="linkDragEnd(event)"
+      style="display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--border);cursor:${edit?'default':'pointer'};">
+      ${edit ? `<span style="font-size:18px;color:var(--text3);cursor:grab;flex-shrink:0;" title="드래그로 순서 변경">⠿</span>` : ''}
+      <span style="font-size:20px;flex-shrink:0;">${l.icon||'🔗'}</span>
+      <div style="flex:1;min-width:0;" onclick="window.open('${l.url}','_blank')" style="cursor:pointer;">
+        <div class="lname" style="cursor:pointer;">${l.name}</div>
+        ${l.desc ? `<div style="font-size:11.5px;color:var(--text2);">${l.desc}</div>` : ''}
+      </div>
+      <a href="${l.url}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);flex-shrink:0;text-decoration:none;">바로가기 ↗</a>
+      ${edit ? `<div style="display:flex;gap:5px;flex-shrink:0;">
         <button class="btn bsm" onclick="openModal('link','${l.id}')">수정</button>
         <button class="btn bd" onclick="del('links','${l.id}')">삭제</button>
-      </div>`:''}
-    </a>`).join('');
+      </div>` : ''}
+    </div>`).join('');
 }
+
+/* ── 링크 드래그앤드롭 ── */
+let dragSrcId = null;
+
+window.linkDragStart = e => {
+  dragSrcId = e.currentTarget.dataset.id;
+  e.currentTarget.style.opacity = '0.4';
+  e.dataTransfer.effectAllowed = 'move';
+};
+
+window.linkDragOver = e => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  // 호버 효과
+  document.querySelectorAll('.draggable-link').forEach(el => el.style.outline = '');
+  e.currentTarget.style.outline = '2px solid var(--accent)';
+};
+
+window.linkDragEnd = e => {
+  e.currentTarget.style.opacity = '';
+  document.querySelectorAll('.draggable-link').forEach(el => {
+    el.style.outline = '';
+    el.style.opacity = '';
+  });
+};
+
+window.linkDrop = async e => {
+  e.preventDefault();
+  const targetId = e.currentTarget.dataset.id;
+  if (!dragSrcId || dragSrcId === targetId) return;
+
+  // 현재 순서에서 src와 target 위치 찾기
+  const ids = allLinks.map(l => l.id);
+  const srcIdx = ids.indexOf(dragSrcId);
+  const tgtIdx = ids.indexOf(targetId);
+  if (srcIdx === -1 || tgtIdx === -1) return;
+
+  // 순서 재배치
+  const reordered = [...allLinks];
+  const [moved] = reordered.splice(srcIdx, 1);
+  reordered.splice(tgtIdx, 0, moved);
+
+  // Firestore에 order 필드 일괄 업데이트
+  await Promise.all(reordered.map((l, i) =>
+    updateDoc(doc(db, 'links', l.id), { order: i })
+  ));
+};
 function renderQuickLinks(links) {
   const el=document.getElementById('home-links'); if (!el) return;
   if (!links.length) { el.innerHTML='<div class="empty">등록된 링크가 없습니다.</div>'; return; }
