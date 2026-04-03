@@ -247,6 +247,18 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       <div class="logo-sub">우리 학교 정보 모아보기</div>
       <div class="logo-date" id="sb-date"></div>
       <div style="margin-top:8px;font-size:10px;color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.15);border-radius:20px;padding:3px 10px;display:inline-block;">🌸 벚꽃 시즌</div>
+      <!-- 방문자 수 -->
+      <div style="margin-top:12px;display:flex;gap:0;background:rgba(255,255,255,0.12);border-radius:10px;overflow:hidden;">
+        <div style="flex:1;text-align:center;padding:7px 0;">
+          <div style="font-size:9px;color:rgba(255,255,255,0.5);letter-spacing:.08em;margin-bottom:2px;">TODAY</div>
+          <div id="visit-today" style="font-size:15px;font-weight:700;color:#fff;font-family:'DM Mono',monospace;">-</div>
+        </div>
+        <div style="width:1px;background:rgba(255,255,255,0.15);"></div>
+        <div style="flex:1;text-align:center;padding:7px 0;">
+          <div style="font-size:9px;color:rgba(255,255,255,0.5);letter-spacing:.08em;margin-bottom:2px;">TOTAL</div>
+          <div id="visit-total" style="font-size:15px;font-weight:700;color:#fff;font-family:'DM Mono',monospace;">-</div>
+        </div>
+      </div>
     </div>
     <div class="nav-label">메뉴</div>
     <div class="nav-item active" data-p="home"        onclick="go('home',this)"><span class="nav-icon">🏠</span> 홈</div>
@@ -256,18 +268,6 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div class="nav-item"        data-p="afterschool" onclick="go('afterschool',this)"><span class="nav-icon">🌙</span> 늘봄학교</div>
     <div class="nav-item"        data-p="links"       onclick="go('links',this)"><span class="nav-icon">🔗</span> 공유 링크</div>
     <div class="nav-item"        data-p="rooms"       onclick="go('rooms',this)"><span class="nav-icon">🏫</span> 공간 예약</div>
-    <!-- 방문자 수 -->
-    <div id="visitor-bar" style="padding:10px 14px 0;display:flex;gap:10px;justify-content:center;">
-      <div style="text-align:center;">
-        <div style="font-size:9px;color:rgba(255,255,255,0.45);letter-spacing:.08em;text-transform:uppercase;">TODAY</div>
-        <div id="visit-today" style="font-size:16px;font-weight:700;color:#fff;font-family:'DM Mono',monospace;">-</div>
-      </div>
-      <div style="width:1px;background:rgba(255,255,255,0.2);"></div>
-      <div style="text-align:center;">
-        <div style="font-size:9px;color:rgba(255,255,255,0.45);letter-spacing:.08em;text-transform:uppercase;">TOTAL</div>
-        <div id="visit-total" style="font-size:16px;font-weight:700;color:#fff;font-family:'DM Mono',monospace;">-</div>
-      </div>
-    </div>
     <!-- 주의사항 (사이드바 하단 고정) -->
     <div style="margin-top:auto;padding:14px 12px;border-top:1px solid rgba(255,255,255,0.15);">
       <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">⚠ 이용 주의사항</div>
@@ -554,11 +554,25 @@ async function trackVisitor() {
   const totalRef = doc(db, 'meta', 'visitors');
   const todayRef = doc(db, 'meta', 'visit_' + todayStr);
 
-  // 세션 중복 방지 (탭 새로고침 시 재카운트 방지)
+  // 세션 중복 방지
   if (!sessionStorage.getItem('visited_' + todayStr)) {
     sessionStorage.setItem('visited_' + todayStr, '1');
-    await setDoc(totalRef, { total: increment(1) }, { merge: true });
-    await setDoc(todayRef, { count: increment(1), date: todayStr }, { merge: true });
+    try {
+      // 총 방문자
+      const totalSnap = await getDoc(totalRef);
+      if (totalSnap.exists()) {
+        await updateDoc(totalRef, { total: increment(1) });
+      } else {
+        await setDoc(totalRef, { total: 1 });
+      }
+      // 오늘 방문자
+      const todaySnap = await getDoc(todayRef);
+      if (todaySnap.exists()) {
+        await updateDoc(todayRef, { count: increment(1) });
+      } else {
+        await setDoc(todayRef, { count: 1, date: todayStr });
+      }
+    } catch(e) { console.warn('visitor track error', e); }
   }
 
   // 실시간 구독
