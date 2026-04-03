@@ -273,10 +273,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <!-- 홈 -->
     <div class="page active" id="page-home">
       <div class="ph">
-        <div>
-          <div id="quote-text" style="font-size:16px;font-weight:600;letter-spacing:-.02em;line-height:1.5;color:var(--text);"></div>
-          <div id="quote-author" style="font-size:12px;color:var(--text3);margin-top:4px;"></div>
-        </div>
+        <div class="pt">오늘의 현황</div>
         <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;" id="home-date"></div>
       </div>
       <div id="urgent-wrap"></div>
@@ -317,6 +314,13 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
           <div class="clabel" style="margin-bottom:8px;">🔗 빠른 링크</div>
           <div id="home-links"></div>
         </div>
+      </div>
+
+      <!-- 오늘의 명언 -->
+      <div class="card" style="margin-top:0;background:linear-gradient(135deg,#FFF0F6,#FDF6FF);border:1px solid rgba(200,80,120,0.15);text-align:center;padding:20px 28px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;margin-bottom:10px;">✦ 오늘의 명언</div>
+        <div id="quote-text" style="font-size:15px;font-weight:500;line-height:1.7;color:var(--text);font-style:italic;"></div>
+        <div id="quote-author" style="font-size:12px;color:var(--text3);margin-top:8px;"></div>
       </div>
     </div>
 
@@ -580,23 +584,27 @@ window.go = (pid, el) => {
 /* ── Firestore 구독 ── */
 onSnapshot(query(collection(db,'notices'), orderBy('createdAt','desc')), snap => {
   const allList = snap.docs.map(d=>({id:d.id,...d.data()}));
-  window._allNotices = allList; // ID 조회용 전역 저장
-  const todayStr = today.toISOString().slice(0,10); // YYYY-MM-DD
+  window._allNotices = allList;
+  const todayStr = today.toISOString().slice(0,10);
 
-  // 기한 필터: expire 없으면 항상 표시, expire 있으면 오늘 이전이면 숨김
+  // order 필드 기준 정렬, 없으면 createdAt 순 유지
+  allList.sort((a,b) => (a.order??999) - (b.order??999));
+
   const list = allList.filter(n => {
     if (!n.expire) return true;
     return n.expire >= todayStr;
   });
 
-  renderNotices('notice-list', allList, true); // 공지 탭은 기한 지난 것도 표시(관리용)
-  renderNotices('home-notices', list.slice(0,4), false);
+  // 공지(badge==='notice') 최상단 고정
+  const sortedAll  = [...allList].sort((a,b) => (a.badge==='notice'?-1:0) - (b.badge==='notice'?-1:0));
+  const sortedList = [...list].sort((a,b)    => (a.badge==='notice'?-1:0) - (b.badge==='notice'?-1:0));
 
-  // 긴급 배너 (기한 내 것만)
+  renderNotices('notice-list', sortedAll, true);
+  renderNotices('home-notices', sortedList.slice(0,4), false);
+
   const urg = list.find(n=>n.badge==='urgent');
   document.getElementById('urgent-wrap').innerHTML = urg
     ? `<div class="ubanner"><div class="ulbl">📌 긴급 공지</div><div class="utext" style="font-weight:600;">${urg.title||''}</div>${urg.text?`<div class="utext" style="margin-top:3px;font-size:13px;opacity:.85;">${urg.text}</div>`:''}</div>` : '';
-
 });
 
 onSnapshot(collection(db,'calendar'), snap => {
@@ -634,9 +642,16 @@ window.toggleNotice = function(id) {
 function renderNotices(elId, list, edit) {
   const el=document.getElementById(elId); if (!el) return;
   if (!list.length) { el.innerHTML='<div class="empty">등록된 공지사항이 없습니다.</div>'; return; }
-  el.innerHTML=list.map(n=>`
-    <li class="nitem" data-nid="${n.id}">
+  el.innerHTML=list.map((n,idx)=>`
+    <li class="nitem" data-nid="${n.id}" data-idx="${idx}"
+      ${edit ? `draggable="${n.badge==='notice'?'false':'true'}"
+        ondragstart="noticeDragStart(event)"
+        ondragover="noticeDragOver(event)"
+        ondrop="noticeDrop(event)"
+        ondragend="noticeDragEnd(event)"` : ''}>
       <div class="nitem-header" onclick="openNoticeById('${n.id}')">
+        ${edit && n.badge!=='notice' ? `<span style="font-size:16px;color:var(--text3);cursor:grab;margin-right:4px;flex-shrink:0;" title="드래그로 순서 변경">⠿</span>` : ''}
+        ${n.badge==='notice' ? `<span style="font-size:11px;color:var(--accent);margin-right:4px;flex-shrink:0;">📌</span>` : ''}
         <span class="badge ${BCLS[n.badge]||'bn'}">${BLBL[n.badge]||n.badge}</span>
         <span class="ntitle">${n.title||n.text?.split('\n')[0]||'(제목 없음)'}</span>
         <span class="nmeta">${n.date||''}</span>
@@ -649,6 +664,45 @@ function renderNotices(elId, list, edit) {
       </div>`:''}
     </li>`).join('');
 }
+
+/* ── 공지 드래그앤드롭 ── */
+let noticeDragSrcId = null;
+
+window.noticeDragStart = e => {
+  noticeDragSrcId = e.currentTarget.dataset.nid;
+  e.currentTarget.style.opacity = '0.4';
+  e.dataTransfer.effectAllowed = 'move';
+};
+window.noticeDragOver = e => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.nitem').forEach(el => el.style.outline = '');
+  e.currentTarget.style.outline = '2px solid var(--accent)';
+};
+window.noticeDragEnd = e => {
+  e.currentTarget.style.opacity = '';
+  document.querySelectorAll('.nitem').forEach(el => { el.style.outline = ''; el.style.opacity = ''; });
+};
+window.noticeDrop = async e => {
+  e.preventDefault();
+  const targetId = e.currentTarget.dataset.nid;
+  if (!noticeDragSrcId || noticeDragSrcId === targetId) return;
+
+  const notices = window._allNotices || [];
+  const ids = notices.map(n => n.id);
+  const srcIdx = ids.indexOf(noticeDragSrcId);
+  const tgtIdx = ids.indexOf(targetId);
+  if (srcIdx === -1 || tgtIdx === -1) return;
+
+  // 공지 배지는 항상 앞, 그 외에서만 순서 조정
+  const reordered = [...notices];
+  const [moved] = reordered.splice(srcIdx, 1);
+  reordered.splice(tgtIdx, 0, moved);
+
+  await Promise.all(reordered.map((n, i) =>
+    updateDoc(doc(db, 'notices', n.id), { order: i })
+  ));
+};
 
 /* ── 달력 ── */
 function drawCal(tid, gid, eid, y, m, showEdit=true) {
