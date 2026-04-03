@@ -1041,13 +1041,27 @@ function buildForm(t,v={}) {
     <div class="fg"><label>일</label><input type="number" id="f-day" min="1" max="31" value="${v.day||''}"></div>
     <div class="fg"><label>일정명</label><input id="f-name" value="${v.name||''}"></div>
     <div class="fg"><label>상세 (선택)</label><input id="f-detail" value="${v.detail||''}"></div>`;
-  if (t==='instructor') return `
-    <div class="fg"><label>요일</label><select id="f-dow">${[['1','월'],['2','화'],['3','수'],['4','목'],['5','금']].map(([val,lb])=>`<option value="${val}" ${String(v.dayOfWeek)===val?'selected':''}>${lb}요일</option>`).join('')}</select></div>
-    <div class="fg"><label>교시</label><select id="f-time">${[1,2,3,4,5,6].map(p=>`<option value="${p}교시" ${v.time===p+'교시'?'selected':''}>${p}교시</option>`).join('')}</select></div>
-    <div class="fg"><label>수업명</label><input id="f-subject" placeholder="체육 (스포츠 강사)" value="${v.subject||''}"></div>
-    <div class="fg"><label>학년</label><input id="f-grade" value="${v.grade||''}"></div>
-    <div class="fg"><label>장소</label><input id="f-room" value="${v.room||''}"></div>
-    <div class="fg"><label>상세 (선택)</label><input id="f-detail" value="${v.detail||''}"></div>`;
+  if (t==='instructor') {
+    const SUBJECTS = ['공예수업','연극수업','보건수업','집단상담'];
+    const GRADES   = ['1학년','2학년','3학년','4학년','5학년','6학년'];
+    const todayStr = new Date().toISOString().slice(0,10);
+    // 수정 시 기존 날짜 복원
+    let dateVal = todayStr;
+    if (v.year && v.month && v.day) {
+      dateVal = `${v.year}-${String(v.month).padStart(2,'0')}-${String(v.day).padStart(2,'0')}`;
+    }
+    return `
+    <div class="fg"><label>날짜</label><input type="date" id="f-inst-date" value="${dateVal}"></div>
+    <div class="fg"><label>교시</label><select id="f-time">
+      ${[1,2,3,4,5,6].map(p=>`<option value="${p}교시" ${v.time===p+'교시'?'selected':''}>${p}교시</option>`).join('')}
+    </select></div>
+    <div class="fg"><label>수업명</label><select id="f-subject">
+      ${SUBJECTS.map(s=>`<option value="${s}" ${v.subject===s?'selected':''}>${s}</option>`).join('')}
+    </select></div>
+    <div class="fg"><label>학년</label><select id="f-grade">
+      ${GRADES.map(g=>`<option value="${g}" ${v.grade===g?'selected':''}>${g}</option>`).join('')}
+    </select></div>`
+  };
   if (t==='afterschool') return `
     <div class="fg"><label>반 구분</label><select id="f-class">
       <option value="늘봄1반">늘봄1반</option>
@@ -1084,7 +1098,14 @@ window.saveModal = async () => {
     if (!data.title){alert('제목을 입력하세요.');return;}
   }
   else if (curModal==='calendar')   { data={year:+g('f-year'),month:+g('f-month'),day:+g('f-day'),name:g('f-name'),detail:g('f-detail'),type:g('f-type')}; coll='calendar';    if (!data.name||!data.day){alert('날짜와 일정명을 입력하세요.');return;} }
-  else if (curModal==='instructor') { data={dayOfWeek:+g('f-dow'),time:g('f-time'),subject:g('f-subject'),grade:g('f-grade'),room:g('f-room'),detail:g('f-detail')}; coll='instructors'; if (!data.subject){alert('수업명을 입력하세요.');return;} }
+  else if (curModal==='instructor') {
+    const dateVal = g('f-inst-date');
+    if (!dateVal) { alert('날짜를 입력하세요.'); return; }
+    const [yr, mo, dy] = dateVal.split('-').map(Number);
+    data = { year:yr, month:mo, day:dy, time:g('f-time'), subject:g('f-subject'), grade:g('f-grade'), room:'', detail:'' };
+    coll = 'instructors';
+    if (!data.grade) { alert('학년을 선택하세요.'); return; }
+  }
   else if (curModal==='afterschool'){ data={className:g('f-class'),day:+g('f-day'),time:g('f-time'),program:g('f-program'),type:g('f-type'),location:g('f-location'),target:g('f-target')}; coll='afterschool'; if (!data.program||!data.time){alert('시간과 프로그램명을 입력하세요.');return;} }
   else if (curModal==='link')       { data={icon:g('f-icon'),name:g('f-name'),desc:g('f-desc'),url:g('f-url')}; coll='links'; if (!data.name||!data.url){alert('이름과 URL을 입력하세요.');return;} }
   else if (curModal==='room') {
