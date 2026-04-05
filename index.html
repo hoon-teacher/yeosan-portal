@@ -550,7 +550,8 @@ const db = getFirestore(fb);
 
 /* ── 방문자 카운터 ── */
 async function trackVisitor() {
-  const todayStr = today.toISOString().slice(0,10).replace(/-/g,'');
+  const _now = new Date();
+  const todayStr = _now.toISOString().slice(0,10).replace(/-/g,'');
   const totalRef = doc(db, 'meta', 'visitors');
   const todayRef = doc(db, 'meta', 'visit_' + todayStr);
 
