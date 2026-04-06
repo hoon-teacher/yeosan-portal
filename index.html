@@ -135,6 +135,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 .cc { width: 36px; height: 36px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; font-size: 12px; color: var(--text2); position: relative; transition: background .1s; }
 .cc:hover { background: var(--surface2); }
 .cc.today { background: var(--accent); color: #fff !important; font-weight: 600; }
+.cc.sel   { box-shadow: 0 0 0 2px var(--accent); font-weight: 600; background: var(--accent-lt); }
 .cc.hev::after { content: ''; width: 4px; height: 4px; border-radius: 50%; background: var(--amber); position: absolute; bottom: 4px; }
 .cc.today.hev::after { background: rgba(255,255,255,.7); }
 .hol-dot { display: block; width: 4px; height: 4px; border-radius: 50%; background: #DC2626; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); }
@@ -1085,7 +1086,7 @@ onSnapshot(query(collection(db,'notices'), orderBy('createdAt','desc')), snap =>
 
 onSnapshot(collection(db,'calendar'), snap => {
   allEv = snap.docs.map(d=>({id:d.id,...d.data()}));
-  drawCal('h-cal-title','h-cal-grid','h-cal-events', hY, hM, false);
+  drawCal('h-cal-title','h-cal-grid','h-cal-events', hY, hM, false, true);
   drawCal('m-cal-title','m-cal-grid','m-cal-events', calY, calM);
 });
 
@@ -1181,7 +1182,7 @@ window.noticeDrop = async e => {
 };
 
 /* ── 달력 ── */
-function drawCal(tid, gid, eid, y, m, showEdit=true) {
+function drawCal(tid, gid, eid, y, m, showEdit=true, clickable=false) {
   const fd=new Date(y,m-1,1).getDay(), dim=new Date(y,m,0).getDate(), dip=new Date(y,m-1,0).getDate();
   const el=document.getElementById(tid); if (el) el.textContent=`${y}년 ${m}월`;
   const evs=allEv.filter(e=>+e.year===y&&+e.month===m);
@@ -1199,12 +1200,13 @@ function drawCal(tid, gid, eid, y, m, showEdit=true) {
     const hasEv = evDays.has(d);
     const isSun = dow===0 || isHol;
     const cls=['cc', isT?'today':'', hasEv?'hev':'', isSun?'sun':'', dow===6?'sat':''].filter(Boolean).join(' ');
-    c+=`<div class="${cls}" style="${isHol&&!isT?'color:#DC2626;font-weight:600;':''}">${d}${isHol?'<span class="hol-dot"></span>':''}</div>`;
+    c+=`<div class="${cls}" data-day="${d}" ${clickable?`onclick="showHomeCalDay(${d},${y},${m})" style="cursor:pointer;${isHol&&!isT?'color:#DC2626;font-weight:600;':''}"`:` style="${isHol&&!isT?'color:#DC2626;font-weight:600;':''}"`}>${d}${isHol?'<span class="hol-dot"></span>':''}</div>`;
   }
   for (let d=1;d<=42-fd-dim;d++) c+=`<div class="cc dim">${d}</div>`;
   const g=document.getElementById(gid); if (g) g.innerHTML=c;
 
   const ev=document.getElementById(eid); if (!ev) return;
+  if (clickable) { ev.innerHTML='<div class="empty" style="font-size:12px;">📅 날짜를 클릭하면 일정을 확인할 수 있습니다.</div>'; return; }
   if (!evs.length) { ev.innerHTML='<div class="empty">이달 등록된 일정이 없습니다.</div>'; return; }
 
   ev.innerHTML=evs.sort((a,b)=>+a.day-+b.day).map(e=>`
@@ -1223,8 +1225,25 @@ function drawCal(tid, gid, eid, y, m, showEdit=true) {
 
 window.mPrev=()=>{calM--;if(calM<1){calM=12;calY--;}drawCal('m-cal-title','m-cal-grid','m-cal-events',calY,calM);};
 window.mNext=()=>{calM++;if(calM>12){calM=1;calY++;}drawCal('m-cal-title','m-cal-grid','m-cal-events',calY,calM);};
-window.hPrev=()=>{hM--;if(hM<1){hM=12;hY--;}drawCal('h-cal-title','h-cal-grid','h-cal-events',hY,hM,false);};
-window.hNext=()=>{hM++;if(hM>12){hM=1;hY++;}drawCal('h-cal-title','h-cal-grid','h-cal-events',hY,hM,false);};
+window.hPrev=()=>{hM--;if(hM<1){hM=12;hY--;}drawCal('h-cal-title','h-cal-grid','h-cal-events',hY,hM,false,true);};
+window.hNext=()=>{hM++;if(hM>12){hM=1;hY++;}drawCal('h-cal-title','h-cal-grid','h-cal-events',hY,hM,false,true);};
+
+window.showHomeCalDay = function(d, y, m) {
+  document.querySelectorAll('#h-cal-grid .cc').forEach(c => c.classList.remove('sel'));
+  const cell = document.querySelector(`#h-cal-grid .cc[data-day="${d}"]`);
+  if (cell) cell.classList.add('sel');
+  const el = document.getElementById('h-cal-events'); if (!el) return;
+  const dayEvs = allEv.filter(e => +e.year===y && +e.month===m && +e.day===d);
+  if (!dayEvs.length) { el.innerHTML=`<div class="empty">${m}월 ${d}일 일정이 없습니다.</div>`; return; }
+  el.innerHTML = dayEvs.map(e=>`
+    <div class="evitem">
+      <div class="evday" style="${e.type==='holiday'?'background:var(--red-lt);color:var(--red);':''}">${e.day}일</div>
+      <div style="flex:1;">
+        <div class="evname" style="${e.type==='holiday'?'color:var(--red);':''}">${e.name}</div>
+        ${e.detail?`<div class="evdetail">${e.detail}</div>`:''}
+      </div>
+    </div>`).join('');
+};
 
 /* ── 협력수업 ── */
 let instY = today.getFullYear(), instM = today.getMonth()+1;
