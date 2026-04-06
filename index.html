@@ -247,18 +247,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       <div class="logo-sub">우리 학교 정보 모아보기</div>
       <div class="logo-date" id="sb-date"></div>
       <div style="margin-top:8px;font-size:10px;color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.15);border-radius:20px;padding:3px 10px;display:inline-block;">🌸 벚꽃 시즌</div>
-      <!-- 방문자 수 -->
-      <div style="margin-top:12px;display:flex;gap:0;background:rgba(255,255,255,0.12);border-radius:10px;overflow:hidden;">
-        <div style="flex:1;text-align:center;padding:7px 0;">
-          <div style="font-size:9px;color:rgba(255,255,255,0.5);letter-spacing:.08em;margin-bottom:2px;">TODAY</div>
-          <div id="visit-today" style="font-size:15px;font-weight:700;color:#fff;font-family:'DM Mono',monospace;">-</div>
-        </div>
-        <div style="width:1px;background:rgba(255,255,255,0.15);"></div>
-        <div style="flex:1;text-align:center;padding:7px 0;">
-          <div style="font-size:9px;color:rgba(255,255,255,0.5);letter-spacing:.08em;margin-bottom:2px;">TOTAL</div>
-          <div id="visit-total" style="font-size:15px;font-weight:700;color:#fff;font-family:'DM Mono',monospace;">-</div>
-        </div>
-      </div>
+
     </div>
     <div class="nav-label">메뉴</div>
     <div class="nav-item active" data-p="home"        onclick="go('home',this)"><span class="nav-icon">🏠</span> 홈</div>
@@ -579,12 +568,10 @@ async function trackVisitor() {
   // 실시간 구독
   onSnapshot(totalRef, snap => {
     const t = snap.data()?.total || 0;
-    document.getElementById('visit-total').textContent = t.toLocaleString();
     document.getElementById('easter-total').textContent = t.toLocaleString();
   });
   onSnapshot(todayRef, snap => {
     const t = snap.data()?.count || 0;
-    document.getElementById('visit-today').textContent = t.toLocaleString();
     document.getElementById('easter-today').textContent = t.toLocaleString();
   });
 }
