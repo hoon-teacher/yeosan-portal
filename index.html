@@ -380,7 +380,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       </div>
       <!-- 월별 달력 뷰 -->
       <div class="card" style="margin-top:0;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <div class="clabel" style="margin-bottom:0;">월별 일정</div>
           <div style="display:flex;gap:6px;align-items:center;">
             <button class="calbtn" onclick="instPrev()">◂</button>
@@ -388,6 +388,8 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
             <button class="calbtn" onclick="instNext()">▸</button>
           </div>
         </div>
+        <!-- 수업 종류 탭 -->
+        <div class="tttabs" id="inst-subject-tabs" style="margin-bottom:14px;"></div>
         <div id="inst-month-list"></div>
       </div>
     </div>
@@ -1200,7 +1202,7 @@ function drawCal(tid, gid, eid, y, m, showEdit=true, clickable=false) {
     const hasEv = evDays.has(d);
     const isSun = dow===0 || isHol;
     const cls=['cc', isT?'today':'', hasEv?'hev':'', isSun?'sun':'', dow===6?'sat':''].filter(Boolean).join(' ');
-    c+=`<div class="${cls}" data-day="${d}" ${clickable?`onclick="showHomeCalDay(${d},${y},${m})" style="cursor:pointer;${isHol&&!isT?'color:#DC2626;font-weight:600;':''}"`:` style="${isHol&&!isT?'color:#DC2626;font-weight:600;':''}"`}>${d}${isHol?'<span class="hol-dot"></span>':''}</div>`;
+    c+=`<div class="${cls}" data-day="${d}" ${clickable?`onclick="showHomeCalDay(${d},${y},${m})" style="cursor:pointer;${isHol&&!isT?'color:#DC2626;font-weight:600;':''}"`:` style="${isHol&&!isT?'color:#DC2626;font-weight:600;':''}"` }>${d}${isHol?'<span class="hol-dot"></span>':''}</div>`;
   }
   for (let d=1;d<=42-fd-dim;d++) c+=`<div class="cc dim">${d}</div>`;
   const g=document.getElementById(gid); if (g) g.innerHTML=c;
@@ -1227,14 +1229,13 @@ window.mPrev=()=>{calM--;if(calM<1){calM=12;calY--;}drawCal('m-cal-title','m-cal
 window.mNext=()=>{calM++;if(calM>12){calM=1;calY++;}drawCal('m-cal-title','m-cal-grid','m-cal-events',calY,calM);};
 window.hPrev=()=>{hM--;if(hM<1){hM=12;hY--;}drawCal('h-cal-title','h-cal-grid','h-cal-events',hY,hM,false,true);};
 window.hNext=()=>{hM++;if(hM>12){hM=1;hY++;}drawCal('h-cal-title','h-cal-grid','h-cal-events',hY,hM,false,true);};
-
 window.showHomeCalDay = function(d, y, m) {
   document.querySelectorAll('#h-cal-grid .cc').forEach(c => c.classList.remove('sel'));
-  const cell = document.querySelector(`#h-cal-grid .cc[data-day="${d}"]`);
+  const cell = document.querySelector('#h-cal-grid .cc[data-day="' + d + '"]');
   if (cell) cell.classList.add('sel');
   const el = document.getElementById('h-cal-events'); if (!el) return;
   const dayEvs = allEv.filter(e => +e.year===y && +e.month===m && +e.day===d);
-  if (!dayEvs.length) { el.innerHTML=`<div class="empty">${m}월 ${d}일 일정이 없습니다.</div>`; return; }
+  if (!dayEvs.length) { el.innerHTML='<div class="empty">'+m+'월 '+d+'일 일정이 없습니다.</div>'; return; }
   el.innerHTML = dayEvs.map(e=>`
     <div class="evitem">
       <div class="evday" style="${e.type==='holiday'?'background:var(--red-lt);color:var(--red);':''}">${e.day}일</div>
@@ -1247,6 +1248,7 @@ window.showHomeCalDay = function(d, y, m) {
 
 /* ── 협력수업 ── */
 let instY = today.getFullYear(), instM = today.getMonth()+1;
+let curInstSubject = '전체'; // 수업 종류 필터
 
 // 시간 문자열을 교시로 변환 (기존 데이터 호환)
 function toperiod(time) {
@@ -1344,7 +1346,7 @@ function renderInst() {
     i.year && +i.year===today.getFullYear() && +i.month===today.getMonth()+1 && +i.day===today.getDate()
   ));
 
-  const SUBJ_COLOR = { '공예수업':'camber', '연극수업':'cblue', '보건수업':'cgreen', '집단상담':'cred' };
+  const SUBJ_COLOR = { '공예수업':'camber', '연극수업':'cblue', '보건수업':'cgreen', '집단상담':'cred', '공동체 놀이':'cgray' };
 
   const te = document.getElementById('inst-today');
   if (te) {
@@ -1406,13 +1408,26 @@ function renderInstMonth() {
   const dated = dedupeInst(allInst.filter(i => i.year && +i.year===instY && +i.month===instM));
   const listEl = document.getElementById('inst-month-list');
   if (!listEl) return;
-  if (!dated.length) { listEl.innerHTML='<div class="empty">이달 등록된 협력수업 일정이 없습니다.</div>'; return; }
+
+  // 수업 종류 탭 렌더
+  const allSubjects = ['전체', ...new Set(dated.map(i=>i.subject).filter(Boolean))];
+  const tabEl = document.getElementById('inst-subject-tabs');
+  if (tabEl) {
+    tabEl.innerHTML = allSubjects.map(s =>
+      `<button class="tttab ${s===curInstSubject?'active':''}" onclick="setInstSubject('${s}')">${s}</button>`
+    ).join('');
+  }
+
+  // 필터 적용
+  const filtered = curInstSubject === '전체' ? dated : dated.filter(i => i.subject === curInstSubject);
+
+  if (!filtered.length) { listEl.innerHTML='<div class="empty">이달 해당 수업이 없습니다.</div>'; return; }
 
   const DOW_KR = ['일','월','화','수','목','금','토'];
-  const SUBJ_COLOR = { '공예수업':'camber', '연극수업':'cblue', '보건수업':'cgreen', '집단상담':'cred' };
+  const SUBJ_COLOR = { '공예수업':'camber', '연극수업':'cblue', '보건수업':'cgreen', '집단상담':'cred', '공동체 놀이':'cgray' };
 
   const dayMap = {};
-  dated.forEach(i => {
+  filtered.forEach(i => {
     const k = +i.day;
     if (!dayMap[k]) dayMap[k] = [];
     dayMap[k].push(i);
@@ -1448,6 +1463,8 @@ function renderInstMonth() {
       </div>`;
   }).join('');
 }
+
+window.setInstSubject = s => { curInstSubject = s; renderInstMonth(); };
 
 window.instPrev = () => { instM--; if(instM<1){instM=12;instY--;} renderInstMonth(); };
 window.instNext = () => { instM++; if(instM>12){instM=1;instY++;} renderInstMonth(); };
@@ -1693,7 +1710,7 @@ function buildForm(t,v={}) {
     <div class="fg"><label>일정명</label><input id="f-name" value="${v.name||''}"></div>
     <div class="fg"><label>상세 (선택)</label><input id="f-detail" value="${v.detail||''}"></div>`;
   if (t==='instructor') {
-    const SUBJECTS = ['공예수업','연극수업','보건수업','집단상담'];
+    const SUBJECTS = ['공예수업','연극수업','보건수업','집단상담','공동체 놀이'];
     const GRADES   = ['1학년','2학년','3학년','4학년','5학년','6학년'];
     const todayStr = new Date().toISOString().slice(0,10);
     // 수정 시 기존 날짜 복원
