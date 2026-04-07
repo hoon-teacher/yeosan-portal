@@ -452,7 +452,10 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div class="page" id="page-rooms">
       <div class="ph">
         <div class="pt">공간 예약</div>
-        <button class="btn bp" onclick="openRoomModal()">+ 예약 등록</button>
+        <div class="pa">
+          <button class="btn bs" onclick="openScheduleEdit()">✏ 정규배정 수정</button>
+          <button class="btn bp" onclick="openRoomModal()">+ 예약 등록</button>
+        </div>
       </div>
       <div class="tttabs" id="room-tabs"></div>
       <div class="card">
@@ -1395,8 +1398,8 @@ function dedupeInst(items) {
   });
 }
 
-/* ── 협력수업 테이블 빌더 ── */
-function buildInstTable(items, SUBJ_COLOR, dayItems) {
+/* ── 협력수업 테이블 빌더 - 수업별로 세로 분리 ── */
+function buildInstTable(items, SUBJ_COLOR) {
   const subjects = [...new Set(items.map(i=>i.subject))];
   if (!subjects.length) return '';
 
@@ -1406,47 +1409,61 @@ function buildInstTable(items, SUBJ_COLOR, dayItems) {
     return m ? +m[1] : 99;
   }
 
-  // subject × period 매핑 (id도 보관)
-  const cellMap = {};
-  subjects.forEach(s => {
-    cellMap[s] = {};
-    items.filter(i=>i.subject===s).forEach(i => {
+  // 수업이 2개 이상이면 세로로 분리해서 표시
+  return subjects.map(s => {
+    const sItems = items.filter(i => i.subject === s);
+    const cellMap = {};
+    sItems.forEach(i => {
       const p = pNum(i.time);
-      if (!cellMap[s][p]) cellMap[s][p] = i;
+      if (!cellMap[p]) cellMap[p] = i;
     });
-  });
 
-  const allPeriods = [1,2,3,4,5,6];
+    const usedPeriods = [1,2,3,4,5,6].filter(p => cellMap[p]);
+    if (!usedPeriods.length) return '';
 
-  const rows = allPeriods.map(p => `
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:9px 12px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);text-align:center;white-space:nowrap;">${p}교시</td>
-      ${subjects.map(s => {
-        const item = cellMap[s][p];
-        const grade = item?.grade || '';
-        const id = item?.id || '';
-        const chipColor = SUBJ_COLOR[s] || 'cgray';
-        return `<td style="padding:6px 12px;text-align:center;vertical-align:middle;">
-          ${grade
-            ? `<span class="chip ${chipColor}" style="font-size:12px;cursor:pointer;"
-                onclick="editInstCell('${id}','${s}','${p}','${grade}')">${grade}</span>`
-            : `<span style="font-size:11px;color:var(--border2);cursor:pointer;"
-                onclick="editInstCell('','${s}','${p}','')">＋</span>`
-          }
-        </td>`;
-      }).join('')}
-    </tr>`).join('');
+    const chipColor = SUBJ_COLOR[s] || 'cgray';
+    const rows = usedPeriods.map(p => {
+      const item = cellMap[p];
+      return `<tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:8px 12px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);text-align:center;white-space:nowrap;width:80px;">${p}교시</td>
+        <td style="padding:8px 12px;text-align:center;vertical-align:middle;">
+          <span class="chip ${chipColor}" style="font-size:12px;cursor:pointer;"
+            onclick="editInstCell('${item.id}','${s}','${p}','${item.grade||''}')">${item.grade||''}</span>
+        </td>
+        <td style="padding:8px 12px;">
+          ${usedPeriods.filter(pp => !cellMap[pp]).length < 6
+            ? `<span style="font-size:11px;color:var(--border2);cursor:pointer;"
+                onclick="editInstCell('','${s}','${p}','')"></span>` : ''}
+        </td>
+      </tr>`;
+    }).join('');
 
-  return `
-    <div style="overflow-x:auto;">
-      <table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:300px;">
-        <thead><tr style="border-bottom:1.5px solid var(--border2);">
-          <th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);width:80px;">교시</th>
-          ${subjects.map(s=>`<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);">${s}</th>`).join('')}
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
+    // 빈 교시 + 버튼도 포함
+    const emptyRows = [1,2,3,4,5,6].filter(p => !cellMap[p]).map(p => `
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:8px 12px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);text-align:center;white-space:nowrap;width:80px;">${p}교시</td>
+        <td style="padding:6px 12px;text-align:center;">
+          <span style="font-size:13px;color:var(--border2);cursor:pointer;"
+            onclick="editInstCell('','${s}','${p}','')">＋</span>
+        </td>
+        <td></td>
+      </tr>`).join('');
+
+    return `
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span class="chip ${chipColor}">${s}</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+          <thead><tr style="border-bottom:1.5px solid var(--border2);">
+            <th style="padding:6px 12px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);width:80px;">교시</th>
+            <th style="padding:6px 12px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);">학년</th>
+            <th style="width:20px;"></th>
+          </tr></thead>
+          <tbody>${rows}${emptyRows}</tbody>
+        </table>
+      </div>`;
+  }).join('');
 }
 
 function renderInst() {
@@ -1953,26 +1970,24 @@ window.doUpload=async()=>{ const f=document.getElementById('csv-input').files[0]
 async function loadWeather() {
   const el = document.getElementById('home-weather'); if (!el) return;
   try {
-    // 날씨 + 미세먼지(air quality) 동시 요청
     const [wRes, aqRes] = await Promise.all([
-      fetch('https://api.open-meteo.com/v1/forecast?latitude=36.02&longitude=127.08&current=temperature_2m,weathercode,windspeed_10m,relativehumidity_2m&timezone=Asia%2FSeoul'),
+      fetch('https://api.open-meteo.com/v1/forecast?latitude=36.02&longitude=127.08&current=temperature_2m,weather_code,windspeed_10m,relative_humidity_2m&timezone=Asia%2FSeoul'),
       fetch('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=36.02&longitude=127.08&current=pm10,pm2_5&timezone=Asia%2FSeoul')
     ]);
     const w = await wRes.json();
     const aq = await aqRes.json();
 
-    const temp = Math.round(w.current.temperature_2m);
-    const hum  = w.current.relativehumidity_2m;
-    const wcode= w.current.weathercode;
-    const pm10 = Math.round(aq.current.pm10);
-    const pm25 = Math.round(aq.current.pm2_5);
+    const temp  = Math.round(w.current.temperature_2m);
+    const hum   = w.current.relative_humidity_2m;
+    const wcode = w.current.weather_code;
+    const pm10  = Math.round(aq.current.pm10);
+    const pm25  = Math.round(aq.current.pm2_5);
 
-    const WICON = {0:'☀',1:'🌤',2:'⛅',3:'☁',45:'🌫',48:'🌫',51:'🌦',53:'🌦',55:'🌧',61:'🌧',63:'🌧',65:'🌧',71:'🌨',73:'🌨',75:'🌨',80:'🌦',81:'🌧',82:'🌧',95:'⛈',96:'⛈',99:'⛈'};
+    const WICON = {0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'🌨️',80:'🌦️',81:'🌧️',82:'🌧️',95:'⛈️',96:'⛈️',99:'⛈️'};
     const WNAME = {0:'맑음',1:'대체로 맑음',2:'구름 조금',3:'흐림',45:'안개',48:'짙은 안개',51:'이슬비',53:'이슬비',55:'이슬비',61:'비',63:'비',65:'강한 비',71:'눈',73:'눈',75:'강한 눈',80:'소나기',81:'소나기',82:'강한 소나기',95:'뇌우',96:'뇌우',99:'뇌우'};
-    const icon = WICON[wcode] || '🌡';
-    const wname= WNAME[wcode] || '';
+    const icon  = WICON[wcode] || '🌡️';
+    const wname = WNAME[wcode] || '';
 
-    // 미세먼지 등급
     const pm10Grade = pm10<=30?['좋음','var(--accent)']:pm10<=80?['보통','var(--blue)']:pm10<=150?['나쁨','var(--amber)']:['매우나쁨','var(--red)'];
     const pm25Grade = pm25<=15?['좋음','var(--accent)']:pm25<=35?['보통','var(--blue)']:pm25<=75?['나쁨','var(--amber)']:['매우나쁨','var(--red)'];
 
@@ -2225,6 +2240,59 @@ window.openRoomModal = () => {
   const saveBtn=document.getElementById('notice-popup-save');
   if (saveBtn) saveBtn.style.display='';
   document.getElementById('edit-ov').classList.add('open');
+};
+
+/* ── 정규배정 직접 수정 ── */
+const GRADE_OPTIONS = ['','1학년','2학년','3학년','4학년','5학년','6학년'];
+const DOW_KR_ROOM = ['','월','화','수','목','금'];
+
+window.openScheduleEdit = () => {
+  document.getElementById('modal-title').textContent = '정규배정 수정';
+  let html = '<p style="font-size:12px;color:var(--text3);margin-bottom:16px;">각 셀을 클릭해서 학년을 수정하세요.</p>';
+
+  ROOMS.forEach(room => {
+    html += `<div style="margin-bottom:18px;">
+      <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px;">${room}</div>
+      <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr>
+          <th style="padding:5px 8px;background:var(--surface2);color:var(--text3);font-size:10px;width:50px;">교시</th>
+          ${[1,2,3,4,5].map(d=>`<th style="padding:5px 8px;background:var(--surface2);color:var(--text3);font-size:10px;min-width:70px;">${DOW_KR_ROOM[d]}</th>`).join('')}
+        </tr></thead>
+        <tbody>
+          ${PERIODS.map(p => `<tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:5px 8px;background:var(--surface2);text-align:center;font-size:11px;font-weight:600;color:var(--text3);">${p}</td>
+            ${[1,2,3,4,5].map(d => {
+              const cur = BASE_SCHEDULE[room]?.[d]?.[p] || '';
+              return `<td style="padding:4px 6px;text-align:center;">
+                <select style="width:100%;padding:3px 4px;font-size:11px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);"
+                  onchange="updateBaseSchedule('${room}',${d},${p},this.value)">
+                  ${GRADE_OPTIONS.map(g=>`<option value="${g}" ${g===cur?'selected':''}>${g||'-'}</option>`).join('')}
+                </select>
+              </td>`;
+            }).join('')}
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      </div>
+    </div>`;
+  });
+
+  document.getElementById('modal-body').innerHTML = html;
+  const saveBtn = document.getElementById('notice-popup-save');
+  if (saveBtn) saveBtn.style.display = 'none';
+  document.getElementById('edit-ov').classList.add('open');
+};
+
+window.updateBaseSchedule = (room, dow, period, grade) => {
+  if (!BASE_SCHEDULE[room]) BASE_SCHEDULE[room] = {};
+  if (!BASE_SCHEDULE[room][dow]) BASE_SCHEDULE[room][dow] = {};
+  if (grade) {
+    BASE_SCHEDULE[room][dow][period] = grade;
+  } else {
+    delete BASE_SCHEDULE[room][dow][period];
+  }
+  renderRooms();
 };
 </script>
 </body>
