@@ -184,8 +184,8 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 .tt td:first-child { font-size: 11px; color: var(--text3); white-space: nowrap; font-family: 'DM Mono', monospace; min-width: 110px; background: var(--surface2); }
 .chip { display: inline-block; padding: 3px 9px; border-radius: 6px; font-size: 11px; font-weight: 500; white-space: nowrap; }
 .cblue  { background: var(--blue-lt);  color: var(--blue);  }
-.cgreen { background: var(--accent-lt);color: var(--accent);}
-.camber { background: #FFF0F5; color: #C8507A; }
+.cgreen { background: #DCFCE7; color: #16A34A; }
+.camber { background: #FFF7ED; color: #EA580C; }
 .cred   { background: var(--red-lt);   color: var(--red);   }
 .cgray  { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
 .ttday  { background: #F0F7FF !important; }
@@ -1398,7 +1398,7 @@ function dedupeInst(items) {
   });
 }
 
-/* ── 협력수업 테이블 빌더 - 수업별로 세로 분리 ── */
+/* ── 협력수업 테이블 빌더 ── */
 function buildInstTable(items, SUBJ_COLOR) {
   const subjects = [...new Set(items.map(i=>i.subject))];
   if (!subjects.length) return '';
@@ -1409,61 +1409,46 @@ function buildInstTable(items, SUBJ_COLOR) {
     return m ? +m[1] : 99;
   }
 
-  // 수업이 2개 이상이면 세로로 분리해서 표시
-  return subjects.map(s => {
-    const sItems = items.filter(i => i.subject === s);
-    const cellMap = {};
-    sItems.forEach(i => {
+  const cellMap = {};
+  subjects.forEach(s => {
+    cellMap[s] = {};
+    items.filter(i=>i.subject===s).forEach(i => {
       const p = pNum(i.time);
-      if (!cellMap[p]) cellMap[p] = i;
+      if (!cellMap[s][p]) cellMap[s][p] = i;
     });
+  });
 
-    const usedPeriods = [1,2,3,4,5,6].filter(p => cellMap[p]);
-    if (!usedPeriods.length) return '';
+  const allPeriods = [1,2,3,4,5,6];
 
-    const chipColor = SUBJ_COLOR[s] || 'cgray';
-    const rows = usedPeriods.map(p => {
-      const item = cellMap[p];
-      return `<tr style="border-bottom:1px solid var(--border);">
-        <td style="padding:8px 12px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);text-align:center;white-space:nowrap;width:80px;">${p}교시</td>
-        <td style="padding:8px 12px;text-align:center;vertical-align:middle;">
-          <span class="chip ${chipColor}" style="font-size:12px;cursor:pointer;"
-            onclick="editInstCell('${item.id}','${s}','${p}','${item.grade||''}')">${item.grade||''}</span>
-        </td>
-        <td style="padding:8px 12px;">
-          ${usedPeriods.filter(pp => !cellMap[pp]).length < 6
-            ? `<span style="font-size:11px;color:var(--border2);cursor:pointer;"
-                onclick="editInstCell('','${s}','${p}','')"></span>` : ''}
-        </td>
-      </tr>`;
-    }).join('');
+  const rows = allPeriods.map(p => `
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:9px 12px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);text-align:center;white-space:nowrap;">${p}교시</td>
+      ${subjects.map(s => {
+        const item = cellMap[s][p];
+        const grade = item?.grade || '';
+        const id = item?.id || '';
+        const chipColor = SUBJ_COLOR[s] || 'cgray';
+        return `<td style="padding:6px 12px;text-align:center;vertical-align:middle;">
+          ${grade
+            ? `<span class="chip ${chipColor}" style="font-size:12px;cursor:pointer;"
+                onclick="editInstCell('${id}','${s}','${p}','${grade}')">${grade}</span>`
+            : `<span style="font-size:11px;color:var(--border2);cursor:pointer;"
+                onclick="editInstCell('','${s}','${p}','')">＋</span>`
+          }
+        </td>`;
+      }).join('')}
+    </tr>`).join('');
 
-    // 빈 교시 + 버튼도 포함
-    const emptyRows = [1,2,3,4,5,6].filter(p => !cellMap[p]).map(p => `
-      <tr style="border-bottom:1px solid var(--border);">
-        <td style="padding:8px 12px;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);text-align:center;white-space:nowrap;width:80px;">${p}교시</td>
-        <td style="padding:6px 12px;text-align:center;">
-          <span style="font-size:13px;color:var(--border2);cursor:pointer;"
-            onclick="editInstCell('','${s}','${p}','')">＋</span>
-        </td>
-        <td></td>
-      </tr>`).join('');
-
-    return `
-      <div style="margin-bottom:12px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span class="chip ${chipColor}">${s}</span>
-        </div>
-        <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
-          <thead><tr style="border-bottom:1.5px solid var(--border2);">
-            <th style="padding:6px 12px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);width:80px;">교시</th>
-            <th style="padding:6px 12px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);">학년</th>
-            <th style="width:20px;"></th>
-          </tr></thead>
-          <tbody>${rows}${emptyRows}</tbody>
-        </table>
-      </div>`;
-  }).join('');
+  return `
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:300px;">
+        <thead><tr style="border-bottom:1.5px solid var(--border2);">
+          <th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);width:80px;">교시</th>
+          ${subjects.map(s=>`<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);">${s}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 
 function renderInst() {
@@ -1583,9 +1568,6 @@ function renderInstMonth() {
             display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
             <span style="font-size:16px;font-weight:600;color:${isToday?'#fff':'var(--text)'};">${d}</span>
             <span style="font-size:9px;color:${isToday?'rgba(255,255,255,.8)':'var(--text3)'};">${dowKr}</span>
-          </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            ${Object.keys(subjMap).map(s=>`<span class="chip ${SUBJ_COLOR[s]||'cgray'}">${s}</span>`).join('')}
           </div>
         </div>
         ${buildInstTable(items, SUBJ_COLOR)}
