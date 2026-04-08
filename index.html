@@ -728,6 +728,31 @@ async function trackVisitor() {
 }
 trackVisitor();
 
+/* ── 협력수업 중복 데이터 자동 정리 ── */
+async function dedupeInstructors() {
+  try {
+    const snap = await getDocs(collection(db,'instructors'));
+    const all = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const seen = new Map(); // key → 가장 최근 doc
+    const toDelete = [];
+    all.forEach(item => {
+      const key = `${item.year||''}-${item.month||''}-${item.day||''}-${item.time||''}-${item.subject||''}-${item.grade||''}`;
+      if (seen.has(key)) {
+        // 중복 발견 → 이전 것 삭제 대상에 추가
+        toDelete.push(seen.get(key).id);
+        seen.set(key, item);
+      } else {
+        seen.set(key, item);
+      }
+    });
+    if (toDelete.length > 0) {
+      await Promise.all(toDelete.map(id => deleteDoc(doc(db,'instructors',id))));
+      console.log(`[dedup] 협력수업 중복 ${toDelete.length}건 정리 완료`);
+    }
+  } catch(e) { console.warn('dedup error', e); }
+}
+dedupeInstructors();
+
 /* ── 이스터에그 ── */
 (function() {
   const SECRET = 'tkdgns'; let buf = '';
