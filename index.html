@@ -42,16 +42,6 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
   50%  { transform: translateY(50vh) rotate(180deg) translateX(30px); }
   100% { transform: translateY(105vh) rotate(360deg) translateX(-20px); opacity: 0; }
 }
-@keyframes eggPop {
-  0%   { transform: scale(0.5); opacity: 0; }
-  70%  { transform: scale(1.1); }
-  100% { transform: scale(1); opacity: 1; }
-}
-@keyframes run {
-  0%   { transform: translateX(0) scaleX(1); }
-  50%  { transform: translateX(8px) scaleX(1); }
-  100% { transform: translateX(0) scaleX(1); }
-}
 .shell { position: relative; z-index: 1; }
 
 /* layout */
@@ -184,8 +174,8 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 .tt td:first-child { font-size: 11px; color: var(--text3); white-space: nowrap; font-family: 'DM Mono', monospace; min-width: 110px; background: var(--surface2); }
 .chip { display: inline-block; padding: 3px 9px; border-radius: 6px; font-size: 11px; font-weight: 500; white-space: nowrap; }
 .cblue  { background: var(--blue-lt);  color: var(--blue);  }
-.cgreen { background: #DCFCE7; color: #16A34A; }
-.camber { background: #FFF7ED; color: #EA580C; }
+.cgreen { background: var(--accent-lt);color: var(--accent);}
+.camber { background: #FFF0F5; color: #C8507A; }
 .cred   { background: var(--red-lt);   color: var(--red);   }
 .cgray  { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
 .ttday  { background: #F0F7FF !important; }
@@ -390,7 +380,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       </div>
       <!-- 월별 달력 뷰 -->
       <div class="card" style="margin-top:0;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
           <div class="clabel" style="margin-bottom:0;">월별 일정</div>
           <div style="display:flex;gap:6px;align-items:center;">
             <button class="calbtn" onclick="instPrev()">◂</button>
@@ -398,8 +388,6 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
             <button class="calbtn" onclick="instNext()">▸</button>
           </div>
         </div>
-        <!-- 수업 종류 탭 -->
-        <div class="tttabs" id="inst-subject-tabs" style="margin-bottom:14px;"></div>
         <div id="inst-month-list"></div>
       </div>
     </div>
@@ -452,10 +440,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
     <div class="page" id="page-rooms">
       <div class="ph">
         <div class="pt">공간 예약</div>
-        <div class="pa">
-          <button class="btn bs" onclick="openScheduleEdit()">✏ 정규배정 수정</button>
-          <button class="btn bp" onclick="openRoomModal()">+ 예약 등록</button>
-        </div>
+        <button class="btn bp" onclick="openRoomModal()">+ 예약 등록</button>
       </div>
       <div class="tttabs" id="room-tabs"></div>
       <div class="card">
@@ -497,19 +482,6 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
         <div><div style="font-size:11px;color:rgba(255,255,255,0.4);">누적</div><div id="easter-total" style="font-size:28px;font-weight:700;color:#F4A0B8;font-family:'DM Mono',monospace;">-</div></div>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- 🚪 퇴근 이스터에그 오버레이 -->
-<div id="logout-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9999;align-items:center;justify-content:center;flex-direction:column;">
-  <button onclick="closeLogoutEgg()"
-    style="position:absolute;top:20px;right:24px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:24px;cursor:pointer;">✕</button>
-  <canvas id="logout-canvas" style="position:absolute;inset:0;pointer-events:none;"></canvas>
-  <div style="position:relative;text-align:center;z-index:2;animation:eggPop .4s ease;">
-    <div style="font-size:72px;margin-bottom:8px;animation:run 0.5s steps(1) infinite;">🏃</div>
-    <div style="font-size:28px;font-weight:700;color:#FFD700;margin-bottom:6px;letter-spacing:-.02em;">퇴근이다아아!!!</div>
-    <div id="logout-msg" style="font-size:16px;color:rgba(255,255,255,0.8);margin-bottom:20px;"></div>
-    <div style="font-size:13px;color:rgba(255,255,255,0.4);font-family:'DM Mono',monospace;" id="logout-time"></div>
   </div>
 </div>
 
@@ -606,7 +578,7 @@ async function trackVisitor() {
 }
 trackVisitor();
 
-/* ── 🥚 이스터에그 (비밀 코드: tkdgns = 상훈) ── */
+/* ── 🥚 이스터에그 (비밀 코드: sanghun) ── */
 (function() {
   const SECRET = 'tkdgns';
   let buf = '';
@@ -619,95 +591,6 @@ trackVisitor();
     }
   });
 })();
-
-/* ── 🚪 퇴근 이스터에그 (비밀 코드: thoicn = 퇴근) ── */
-(function() {
-  const SECRET = 'xhlrms';
-  let buf = '';
-  document.addEventListener('keydown', e => {
-    buf = (buf + e.key).slice(-SECRET.length);
-    if (buf === SECRET) showLogoutEgg();
-  });
-})();
-
-const LOGOUT_MSGS = [
-  "오늘 하루도 정말 수고 많으셨어요! 🎉",
-  "집에 가면 아무것도 하지 마세요. 그게 최고의 교육입니다 🛋️",
-  "퇴근 후엔 선생님도 그냥 사람입니다 🙌",
-  "오늘 하루 버텨내셨군요. 대단합니다! 💪",
-  "저녁은 맛있는 거 드세요! 🍜",
-  "내일 걱정은 내일 하는 걸로! 🌙",
-  "퇴근길 조심히 가세요~ 🚗",
-  "오늘도 살아남았습니다. 훌륭해요! 🏆",
-  "드디어!!!! 해방이다!!! 🎊",
-  "핸드폰 알림 꺼도 됩니다 📵",
-];
-
-function showLogoutEgg() {
-  const ov = document.getElementById('logout-overlay');
-  ov.style.display = 'flex';
-  // 랜덤 메시지
-  const msg = LOGOUT_MSGS[Math.floor(Math.random() * LOGOUT_MSGS.length)];
-  document.getElementById('logout-msg').textContent = msg;
-  // 현재 시각 표시
-  const now = new Date();
-  const h = String(now.getHours()).padStart(2,'0');
-  const m = String(now.getMinutes()).padStart(2,'0');
-  document.getElementById('logout-time').textContent = `퇴근 시각 ${h}:${m} 🕐`;
-  // 이모지 폭죽
-  launchLogoutConfetti();
-}
-
-window.closeLogoutEgg = () => {
-  document.getElementById('logout-overlay').style.display = 'none';
-  const canvas = document.getElementById('logout-canvas');
-  if (canvas) canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
-};
-
-function launchLogoutConfetti() {
-  const canvas = document.getElementById('logout-canvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  // 노란/주황/금색 계열 폭죽
-  const pieces = Array.from({length:120}, () => ({
-    x: Math.random() * canvas.width,
-    y: Math.random() * canvas.height - canvas.height,
-    r: Math.random() * 8 + 3,
-    color: ['#FFD700','#FFA500','#FF6B6B','#fff','#FFFACD','#FFE066'][Math.floor(Math.random()*6)],
-    speed: Math.random() * 4 + 2,
-    drift: Math.random() * 3 - 1.5,
-    spin: Math.random() * 0.3 - 0.15,
-    angle: Math.random() * Math.PI * 2,
-    shape: Math.random() > 0.5 ? 'circle' : 'rect',
-  }));
-  let frame;
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    pieces.forEach(p => {
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.angle);
-      ctx.fillStyle = p.color;
-      if (p.shape === 'rect') {
-        ctx.fillRect(-p.r/2, -p.r/2, p.r, p.r * 1.6);
-      } else {
-        ctx.beginPath();
-        ctx.arc(0, 0, p.r, 0, Math.PI*2);
-        ctx.fill();
-      }
-      ctx.restore();
-      p.y += p.speed;
-      p.x += p.drift;
-      p.angle += p.spin;
-      if (p.y > canvas.height) { p.y = -10; p.x = Math.random() * canvas.width; }
-    });
-    if (document.getElementById('logout-overlay').style.display !== 'none') {
-      frame = requestAnimationFrame(draw);
-    }
-  }
-  draw();
-}
 
 function launchConfetti() {
   const canvas = document.getElementById('easter-canvas');
@@ -1317,7 +1200,7 @@ function drawCal(tid, gid, eid, y, m, showEdit=true, clickable=false) {
     const hasEv = evDays.has(d);
     const isSun = dow===0 || isHol;
     const cls=['cc', isT?'today':'', hasEv?'hev':'', isSun?'sun':'', dow===6?'sat':''].filter(Boolean).join(' ');
-    c+=`<div class="${cls}" data-day="${d}" ${clickable?`onclick="showHomeCalDay(${d},${y},${m})" style="cursor:pointer;${isHol&&!isT?'color:#DC2626;font-weight:600;':''}"`:` style="${isHol&&!isT?'color:#DC2626;font-weight:600;':''}"` }>${d}${isHol?'<span class="hol-dot"></span>':''}</div>`;
+    c+=`<div class="${cls}" data-day="${d}" ${clickable?`onclick="showHomeCalDay(${d},${y},${m})" style="cursor:pointer;${isHol&&!isT?'color:#DC2626;font-weight:600;':''}"`:` style="${isHol&&!isT?'color:#DC2626;font-weight:600;':''}"`}>${d}${isHol?'<span class="hol-dot"></span>':''}</div>`;
   }
   for (let d=1;d<=42-fd-dim;d++) c+=`<div class="cc dim">${d}</div>`;
   const g=document.getElementById(gid); if (g) g.innerHTML=c;
@@ -1344,13 +1227,14 @@ window.mPrev=()=>{calM--;if(calM<1){calM=12;calY--;}drawCal('m-cal-title','m-cal
 window.mNext=()=>{calM++;if(calM>12){calM=1;calY++;}drawCal('m-cal-title','m-cal-grid','m-cal-events',calY,calM);};
 window.hPrev=()=>{hM--;if(hM<1){hM=12;hY--;}drawCal('h-cal-title','h-cal-grid','h-cal-events',hY,hM,false,true);};
 window.hNext=()=>{hM++;if(hM>12){hM=1;hY++;}drawCal('h-cal-title','h-cal-grid','h-cal-events',hY,hM,false,true);};
+
 window.showHomeCalDay = function(d, y, m) {
   document.querySelectorAll('#h-cal-grid .cc').forEach(c => c.classList.remove('sel'));
-  const cell = document.querySelector('#h-cal-grid .cc[data-day="' + d + '"]');
+  const cell = document.querySelector(`#h-cal-grid .cc[data-day="${d}"]`);
   if (cell) cell.classList.add('sel');
   const el = document.getElementById('h-cal-events'); if (!el) return;
   const dayEvs = allEv.filter(e => +e.year===y && +e.month===m && +e.day===d);
-  if (!dayEvs.length) { el.innerHTML='<div class="empty">'+m+'월 '+d+'일 일정이 없습니다.</div>'; return; }
+  if (!dayEvs.length) { el.innerHTML=`<div class="empty">${m}월 ${d}일 일정이 없습니다.</div>`; return; }
   el.innerHTML = dayEvs.map(e=>`
     <div class="evitem">
       <div class="evday" style="${e.type==='holiday'?'background:var(--red-lt);color:var(--red);':''}">${e.day}일</div>
@@ -1363,7 +1247,6 @@ window.showHomeCalDay = function(d, y, m) {
 
 /* ── 협력수업 ── */
 let instY = today.getFullYear(), instM = today.getMonth()+1;
-let curInstSubject = '전체'; // 수업 종류 필터
 
 // 시간 문자열을 교시로 변환 (기존 데이터 호환)
 function toperiod(time) {
@@ -1399,7 +1282,7 @@ function dedupeInst(items) {
 }
 
 /* ── 협력수업 테이블 빌더 ── */
-function buildInstTable(items, SUBJ_COLOR) {
+function buildInstTable(items, SUBJ_COLOR, dayItems) {
   const subjects = [...new Set(items.map(i=>i.subject))];
   if (!subjects.length) return '';
 
@@ -1409,6 +1292,7 @@ function buildInstTable(items, SUBJ_COLOR) {
     return m ? +m[1] : 99;
   }
 
+  // subject × period 매핑 (id도 보관)
   const cellMap = {};
   subjects.forEach(s => {
     cellMap[s] = {};
@@ -1460,7 +1344,7 @@ function renderInst() {
     i.year && +i.year===today.getFullYear() && +i.month===today.getMonth()+1 && +i.day===today.getDate()
   ));
 
-  const SUBJ_COLOR = { '공예수업':'camber', '연극수업':'cblue', '보건수업':'cgreen', '집단상담':'cred', '공동체 놀이':'cgray' };
+  const SUBJ_COLOR = { '공예수업':'camber', '연극수업':'cblue', '보건수업':'cgreen', '집단상담':'cred' };
 
   const te = document.getElementById('inst-today');
   if (te) {
@@ -1522,26 +1406,13 @@ function renderInstMonth() {
   const dated = dedupeInst(allInst.filter(i => i.year && +i.year===instY && +i.month===instM));
   const listEl = document.getElementById('inst-month-list');
   if (!listEl) return;
-
-  // 수업 종류 탭 렌더
-  const allSubjects = ['전체', ...new Set(dated.map(i=>i.subject).filter(Boolean))];
-  const tabEl = document.getElementById('inst-subject-tabs');
-  if (tabEl) {
-    tabEl.innerHTML = allSubjects.map(s =>
-      `<button class="tttab ${s===curInstSubject?'active':''}" onclick="setInstSubject('${s}')">${s}</button>`
-    ).join('');
-  }
-
-  // 필터 적용
-  const filtered = curInstSubject === '전체' ? dated : dated.filter(i => i.subject === curInstSubject);
-
-  if (!filtered.length) { listEl.innerHTML='<div class="empty">이달 해당 수업이 없습니다.</div>'; return; }
+  if (!dated.length) { listEl.innerHTML='<div class="empty">이달 등록된 협력수업 일정이 없습니다.</div>'; return; }
 
   const DOW_KR = ['일','월','화','수','목','금','토'];
-  const SUBJ_COLOR = { '공예수업':'camber', '연극수업':'cblue', '보건수업':'cgreen', '집단상담':'cred', '공동체 놀이':'cgray' };
+  const SUBJ_COLOR = { '공예수업':'camber', '연극수업':'cblue', '보건수업':'cgreen', '집단상담':'cred' };
 
   const dayMap = {};
-  filtered.forEach(i => {
+  dated.forEach(i => {
     const k = +i.day;
     if (!dayMap[k]) dayMap[k] = [];
     dayMap[k].push(i);
@@ -1569,13 +1440,14 @@ function renderInstMonth() {
             <span style="font-size:16px;font-weight:600;color:${isToday?'#fff':'var(--text)'};">${d}</span>
             <span style="font-size:9px;color:${isToday?'rgba(255,255,255,.8)':'var(--text3)'};">${dowKr}</span>
           </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${Object.keys(subjMap).map(s=>`<span class="chip ${SUBJ_COLOR[s]||'cgray'}">${s}</span>`).join('')}
+          </div>
         </div>
         ${buildInstTable(items, SUBJ_COLOR)}
       </div>`;
   }).join('');
 }
-
-window.setInstSubject = s => { curInstSubject = s; renderInstMonth(); };
 
 window.instPrev = () => { instM--; if(instM<1){instM=12;instY--;} renderInstMonth(); };
 window.instNext = () => { instM++; if(instM>12){instM=1;instY++;} renderInstMonth(); };
@@ -1821,7 +1693,7 @@ function buildForm(t,v={}) {
     <div class="fg"><label>일정명</label><input id="f-name" value="${v.name||''}"></div>
     <div class="fg"><label>상세 (선택)</label><input id="f-detail" value="${v.detail||''}"></div>`;
   if (t==='instructor') {
-    const SUBJECTS = ['공예수업','연극수업','보건수업','집단상담','공동체 놀이'];
+    const SUBJECTS = ['공예수업','연극수업','보건수업','집단상담'];
     const GRADES   = ['1학년','2학년','3학년','4학년','5학년','6학년'];
     const todayStr = new Date().toISOString().slice(0,10);
     // 수정 시 기존 날짜 복원
@@ -1953,24 +1825,26 @@ window.doUpload=async()=>{ const f=document.getElementById('csv-input').files[0]
 async function loadWeather() {
   const el = document.getElementById('home-weather'); if (!el) return;
   try {
+    // 날씨 + 미세먼지(air quality) 동시 요청
     const [wRes, aqRes] = await Promise.all([
-      fetch('https://api.open-meteo.com/v1/forecast?latitude=36.02&longitude=127.08&current=temperature_2m,weather_code,windspeed_10m,relative_humidity_2m&timezone=Asia%2FSeoul'),
+      fetch('https://api.open-meteo.com/v1/forecast?latitude=36.02&longitude=127.08&current=temperature_2m,weathercode,windspeed_10m,relativehumidity_2m&timezone=Asia%2FSeoul'),
       fetch('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=36.02&longitude=127.08&current=pm10,pm2_5&timezone=Asia%2FSeoul')
     ]);
     const w = await wRes.json();
     const aq = await aqRes.json();
 
-    const temp  = Math.round(w.current.temperature_2m);
-    const hum   = w.current.relative_humidity_2m;
-    const wcode = w.current.weather_code;
-    const pm10  = Math.round(aq.current.pm10);
-    const pm25  = Math.round(aq.current.pm2_5);
+    const temp = Math.round(w.current.temperature_2m);
+    const hum  = w.current.relativehumidity_2m;
+    const wcode= w.current.weathercode;
+    const pm10 = Math.round(aq.current.pm10);
+    const pm25 = Math.round(aq.current.pm2_5);
 
-    const WICON = {0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'🌨️',80:'🌦️',81:'🌧️',82:'🌧️',95:'⛈️',96:'⛈️',99:'⛈️'};
+    const WICON = {0:'☀',1:'🌤',2:'⛅',3:'☁',45:'🌫',48:'🌫',51:'🌦',53:'🌦',55:'🌧',61:'🌧',63:'🌧',65:'🌧',71:'🌨',73:'🌨',75:'🌨',80:'🌦',81:'🌧',82:'🌧',95:'⛈',96:'⛈',99:'⛈'};
     const WNAME = {0:'맑음',1:'대체로 맑음',2:'구름 조금',3:'흐림',45:'안개',48:'짙은 안개',51:'이슬비',53:'이슬비',55:'이슬비',61:'비',63:'비',65:'강한 비',71:'눈',73:'눈',75:'강한 눈',80:'소나기',81:'소나기',82:'강한 소나기',95:'뇌우',96:'뇌우',99:'뇌우'};
-    const icon  = WICON[wcode] || '🌡️';
-    const wname = WNAME[wcode] || '';
+    const icon = WICON[wcode] || '🌡';
+    const wname= WNAME[wcode] || '';
 
+    // 미세먼지 등급
     const pm10Grade = pm10<=30?['좋음','var(--accent)']:pm10<=80?['보통','var(--blue)']:pm10<=150?['나쁨','var(--amber)']:['매우나쁨','var(--red)'];
     const pm25Grade = pm25<=15?['좋음','var(--accent)']:pm25<=35?['보통','var(--blue)']:pm25<=75?['나쁨','var(--amber)']:['매우나쁨','var(--red)'];
 
@@ -2083,7 +1957,7 @@ const BASE_SCHEDULE = {
 };
 
 const PERIODS = [1,2,3,4,5,6];
-const PERIOD_TIMES = {1:'09:00~09:40',2:'09:50~10:30',3:'10:40~11:20',4:'11:30~12:10',5:'13:10~13:50',6:'14:00~14:40'};
+const PERIOD_TIMES = {1:'09:00~09:40',2:'10:00~10:40',3:'11:00~11:40',4:'13:00~13:40',5:'14:00~14:40',6:'15:00~15:40'};
 
 let curRoom = '전체', roomWeekOffset = 0, allRooms = [];
 
@@ -2223,59 +2097,6 @@ window.openRoomModal = () => {
   const saveBtn=document.getElementById('notice-popup-save');
   if (saveBtn) saveBtn.style.display='';
   document.getElementById('edit-ov').classList.add('open');
-};
-
-/* ── 정규배정 직접 수정 ── */
-const GRADE_OPTIONS = ['','1학년','2학년','3학년','4학년','5학년','6학년'];
-const DOW_KR_ROOM = ['','월','화','수','목','금'];
-
-window.openScheduleEdit = () => {
-  document.getElementById('modal-title').textContent = '정규배정 수정';
-  let html = '<p style="font-size:12px;color:var(--text3);margin-bottom:16px;">각 셀을 클릭해서 학년을 수정하세요.</p>';
-
-  ROOMS.forEach(room => {
-    html += `<div style="margin-bottom:18px;">
-      <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px;">${room}</div>
-      <div style="overflow-x:auto;">
-      <table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <thead><tr>
-          <th style="padding:5px 8px;background:var(--surface2);color:var(--text3);font-size:10px;width:50px;">교시</th>
-          ${[1,2,3,4,5].map(d=>`<th style="padding:5px 8px;background:var(--surface2);color:var(--text3);font-size:10px;min-width:70px;">${DOW_KR_ROOM[d]}</th>`).join('')}
-        </tr></thead>
-        <tbody>
-          ${PERIODS.map(p => `<tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:5px 8px;background:var(--surface2);text-align:center;font-size:11px;font-weight:600;color:var(--text3);">${p}</td>
-            ${[1,2,3,4,5].map(d => {
-              const cur = BASE_SCHEDULE[room]?.[d]?.[p] || '';
-              return `<td style="padding:4px 6px;text-align:center;">
-                <select style="width:100%;padding:3px 4px;font-size:11px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);"
-                  onchange="updateBaseSchedule('${room}',${d},${p},this.value)">
-                  ${GRADE_OPTIONS.map(g=>`<option value="${g}" ${g===cur?'selected':''}>${g||'-'}</option>`).join('')}
-                </select>
-              </td>`;
-            }).join('')}
-          </tr>`).join('')}
-        </tbody>
-      </table>
-      </div>
-    </div>`;
-  });
-
-  document.getElementById('modal-body').innerHTML = html;
-  const saveBtn = document.getElementById('notice-popup-save');
-  if (saveBtn) saveBtn.style.display = 'none';
-  document.getElementById('edit-ov').classList.add('open');
-};
-
-window.updateBaseSchedule = (room, dow, period, grade) => {
-  if (!BASE_SCHEDULE[room]) BASE_SCHEDULE[room] = {};
-  if (!BASE_SCHEDULE[room][dow]) BASE_SCHEDULE[room][dow] = {};
-  if (grade) {
-    BASE_SCHEDULE[room][dow][period] = grade;
-  } else {
-    delete BASE_SCHEDULE[room][dow][period];
-  }
-  renderRooms();
 };
 </script>
 </body>
