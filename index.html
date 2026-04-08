@@ -1110,12 +1110,16 @@ window.editInstCell = async (id,subject,period,currentGrade) => {
   if(id&&!gradeVal){if(confirm('이 교시 수업을 삭제하시겠습니까?'))await deleteDoc(doc(db,'instructors',id));return;}
   if(!gradeVal)return;
   const grade=gradeVal.includes('학년')?gradeVal:gradeVal+'학년';
-  if(id) await updateDoc(doc(db,'instructors',id),{grade});
-  else {
+  if(id) {
+    await updateDoc(doc(db,'instructors',id),{grade});
+  } else {
     const dateStr=prompt('날짜를 입력하세요 (예: 4/6)',`${instM}/`);
     if(!dateStr)return; const parts=dateStr.split('/'); const m2=+parts[0],dy2=+parts[1];
     if(!m2||!dy2){alert('날짜 형식이 올바르지 않습니다.');return;}
-    await addDoc(collection(db,'instructors'),{year:instY,month:m2,day:dy2,time:period+'교시',subject,grade,room:'',detail:''});
+    // 같은 날짜+교시+수업명 기존 데이터가 있으면 덮어쓰기
+    const existing=allInst.find(i=>+i.year===instY&&+i.month===m2&&+i.day===dy2&&i.time===period+'교시'&&i.subject===subject);
+    if(existing) await updateDoc(doc(db,'instructors',existing.id),{grade});
+    else await addDoc(collection(db,'instructors'),{year:instY,month:m2,day:dy2,time:period+'교시',subject,grade,room:'',detail:''});
   }
 };
 
@@ -1271,6 +1275,11 @@ window.saveModal = async () => {
     const[yr,mo,dy]=dateVal.split('-').map(Number);
     data={year:yr,month:mo,day:dy,time:g('f-time'),subject:g('f-subject'),grade:g('f-grade'),room:'',detail:''};coll='instructors';
     if(!data.grade){alert('학년을 선택하세요.');return;}
+    // 중복 체크: 같은 날짜+교시+수업명이면 덮어쓰기
+    if(!editId){
+      const existing=allInst.find(i=>+i.year===yr&&+i.month===mo&&+i.day===dy&&i.time===data.time&&i.subject===data.subject);
+      if(existing){editId=existing.id;}
+    }
   }
   else if(curModal==='afterschool'){data={className:g('f-class'),day:+g('f-day'),time:g('f-time'),program:g('f-program'),type:g('f-type'),location:g('f-location'),target:g('f-target')};coll='afterschool';if(!data.program||!data.time){alert('시간과 프로그램명을 입력하세요.');return;}}
   else if(curModal==='link'){data={icon:g('f-icon'),name:g('f-name'),desc:g('f-desc'),url:g('f-url')};coll='links';if(!data.name||!data.url){alert('이름과 URL을 입력하세요.');return;}}
