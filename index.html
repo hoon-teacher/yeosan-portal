@@ -1834,9 +1834,10 @@ function buildForm(t,v={}) {
     <div class="fg"><label>교시</label><select id="f-time">
       ${[1,2,3,4,5,6].map(p=>`<option value="${p}교시" ${v.time===p+'교시'?'selected':''}>${p}교시</option>`).join('')}
     </select></div>
-    <div class="fg"><label>수업명</label><select id="f-subject">
-      ${SUBJECTS.map(s=>`<option value="${s}" ${v.subject===s?'selected':''}>${s}</option>`).join('')}
-    </select></div>
+    <div class="fg"><label>수업명</label>
+      <input id="f-subject" list="subject-list" value="${v.subject||''}" placeholder="수업명 선택 또는 직접 입력" autocomplete="off">
+      <datalist id="subject-list">${SUBJECTS.map(s=>`<option value="${s}">`).join('')}</datalist>
+    </div>
     <div class="fg"><label>학년</label><select id="f-grade">
       ${GRADES.map(g=>`<option value="${g}" ${v.grade===g?'selected':''}>${g}</option>`).join('')}
     </select></div>`
