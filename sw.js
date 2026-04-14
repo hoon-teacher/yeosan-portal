@@ -1,5 +1,5 @@
 const CACHE_NAME = 'yeosan-v1';
-const STATIC = ['/'];
+const STATIC = ['./'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
