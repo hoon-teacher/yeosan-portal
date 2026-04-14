@@ -253,6 +253,34 @@ body {
 .drag-handle { font-size: 14px; color: var(--text3); cursor: grab; flex-shrink: 0; opacity: 0.5; transition: opacity var(--transition); }
 .drag-handle:hover { opacity: 1; }
 .home-greeting { font-size: 13px; color: var(--text3); margin-bottom: 4px; }
+
+/* ── PWA 설치 버튼 ── */
+#pwa-install-btn {
+  display: none;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9000;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Pretendard', sans-serif;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(35,131,226,0.4);
+  display: none;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+#pwa-install-btn:hover {
+  background: var(--accent-dk);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(35,131,226,0.5);
+}
 </style>
 </head>
 <body>
@@ -719,7 +747,13 @@ window.openScheduleEdit=()=>{document.getElementById('modal-title').textContent=
 window.updateBaseSchedule=(room,dow,period,grade)=>{if(!BASE_SCHEDULE[room])BASE_SCHEDULE[room]={};if(!BASE_SCHEDULE[room][dow])BASE_SCHEDULE[room][dow]={};if(grade)BASE_SCHEDULE[room][dow][period]=grade;else delete BASE_SCHEDULE[room][dow][period];renderRooms();};
 </script>
 
+<!-- PWA 설치 버튼 (PC 크롬) -->
+<button id="pwa-install-btn" onclick="installPWA()">
+  ⬇ 앱으로 설치
+</button>
+
 <script>
+// 서비스 워커 등록
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
@@ -727,6 +761,32 @@ if ('serviceWorker' in navigator) {
       .catch(e => console.warn('[PWA] 서비스 워커 오류:', e));
   });
 }
+
+// PWA 설치 프롬프트 처리
+let deferredPrompt = null;
+const installBtn = document.getElementById('pwa-install-btn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  installBtn.style.display = 'flex'; // 버튼 표시
+});
+
+async function installPWA() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  if (outcome === 'accepted') {
+    installBtn.style.display = 'none';
+  }
+  deferredPrompt = null;
+}
+
+// 이미 설치됐으면 버튼 숨기기
+window.addEventListener('appinstalled', () => {
+  installBtn.style.display = 'none';
+  deferredPrompt = null;
+});
 </script>
 </body>
 </html>
