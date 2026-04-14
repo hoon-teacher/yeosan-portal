@@ -336,6 +336,51 @@ body {
   box-shadow: 0 6px 20px rgba(35,131,226,0.5);
 }
 
+
+/* ── 협력수업 오늘 팝업 ── */
+#inst-today-popup {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45);
+  backdrop-filter:blur(2px); z-index:9000;
+  align-items:center; justify-content:center; padding:20px;
+}
+#inst-today-popup.open { display:flex; }
+.inst-popup-modal {
+  background:var(--surface); border-radius:12px; box-shadow:var(--shadow-lg);
+  width:100%; max-width:420px; overflow:hidden; border:1px solid var(--border);
+}
+.inst-popup-head {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 20px 12px; border-bottom:1px solid var(--border);
+  background:var(--accent); color:#fff;
+}
+.inst-popup-title { font-size:14px; font-weight:700; }
+.inst-popup-body { padding:16px 20px; }
+.inst-popup-row {
+  display:flex; align-items:center; gap:10px; padding:9px 0;
+  border-bottom:1px solid var(--border); font-size:13px;
+}
+.inst-popup-row:last-child { border-bottom:none; }
+.inst-popup-period {
+  font-size:12px; font-weight:700; color:var(--text3);
+  min-width:52px; font-family:'JetBrains Mono',monospace;
+}
+.inst-popup-foot {
+  padding:12px 20px; border-top:1px solid var(--border);
+  display:flex; justify-content:flex-end;
+}
+
+/* ── 급식판 ── */
+.meal-tray {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:6px; margin-top:4px;
+}
+.meal-tray-item {
+  background:var(--surface2); border-radius:8px; padding:8px 10px;
+  display:flex; align-items:center; gap:6px; font-size:12px;
+  border:1px solid var(--border);
+}
+.meal-tray-emoji { font-size:18px; flex-shrink:0; }
+.meal-tray-name { font-size:11.5px; color:var(--text); font-weight:500; line-height:1.35; }
 </style>
 </head>
 <body>
@@ -543,6 +588,22 @@ body {
   </main>
 </div>
 
+<!-- 협력수업 오늘 팝업 -->
+<div id="inst-today-popup">
+  <div class="inst-popup-modal">
+    <div class="inst-popup-head">
+      <div class="inst-popup-title">👩‍🏫 오늘의 협력수업</div>
+      <button onclick="document.getElementById('inst-today-popup').classList.remove('open')"
+        style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;opacity:.7;">✕</button>
+    </div>
+    <div class="inst-popup-body" id="inst-popup-body"></div>
+    <div class="inst-popup-foot">
+      <button class="btn btn-primary btn-sm"
+        onclick="document.getElementById('inst-today-popup').classList.remove('open')">확인</button>
+    </div>
+  </div>
+</div>
+
 <div id="easter-overlay" class="easter-overlay dark">
   <button class="easter-close" onclick="document.getElementById('easter-overlay').style.display='none'">✕</button>
   <canvas id="easter-canvas" style="position:absolute;inset:0;pointer-events:none;"></canvas>
@@ -729,7 +790,27 @@ function toperiod(time){if(!time)return'';if(/교시/.test(time))return time;con
 function dedupeInst(items){const seen=new Set();return items.filter(i=>{const k=`${i.year||''}-${i.month||''}-${i.day||''}-${i.time||''}-${i.subject||''}-${i.grade||''}`;if(seen.has(k))return false;seen.add(k);return true;});}
 const SUBJ_COLOR={'공예수업':'chip-amber','연극수업':'chip-blue','보건수업':'chip-green','집단상담':'chip-red','공동체 놀이':'chip-gray'};
 function buildInstTable(items){const subjects=[...new Set(items.map(i=>i.subject))];if(!subjects.length)return'';function pNum(time){const t=toperiod(time||'');const m=t.match(/^(\d+)/);return m?+m[1]:99;}const cellMap={};subjects.forEach(s=>{cellMap[s]={};items.filter(i=>i.subject===s).forEach(i=>{const p=pNum(i.time);if(!cellMap[s][p])cellMap[s][p]=i;});});return`<div style="overflow-x:auto;"><table class="inst-table"><thead><tr><th style="width:60px;">교시</th>${subjects.map(s=>`<th>${s}</th>`).join('')}</tr></thead><tbody>${[1,2,3,4,5,6].map(p=>`<tr><td>${p}교시</td>${subjects.map(s=>{const item=cellMap[s][p];const grade=item?.grade||'';const id=item?.id||'';const chipColor=SUBJ_COLOR[s]||'chip-gray';return`<td>${grade?`<span class="chip ${chipColor}" style="cursor:pointer;" onclick="editInstCell('${id}','${s}','${p}','${grade}')">${grade}</span>`:`<span style="font-size:11px;color:var(--border2);cursor:pointer;" onclick="editInstCell('','${s}','${p}','')">+</span>`}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div>`;}
-function renderInst(){const dow=today.getDay();const lbl=document.getElementById('inst-lbl');if(lbl)lbl.textContent=`오늘 (${today.getMonth()+1}/${today.getDate()} ${DAYS[dow]}) 수업`;const todayItems=dedupeInst(allInst.filter(i=>i.year&&+i.year===today.getFullYear()&&+i.month===today.getMonth()+1&&+i.day===today.getDate()));const te=document.getElementById('inst-today');if(te){if(!todayItems.length)te.innerHTML='<div class="empty">오늘 협력수업이 없습니다.</div>';else te.innerHTML=buildInstTable(todayItems);}const homeInst=document.getElementById('home-inst');if(homeInst){if(!todayItems.length)homeInst.innerHTML='<div class="empty">오늘 협력수업이 없습니다.</div>';else{const subjMap={};todayItems.forEach(i=>{if(!subjMap[i.subject])subjMap[i.subject]=[];subjMap[i.subject].push(i);});homeInst.innerHTML=Object.entries(subjMap).map(([subj,list])=>{const sorted=list.slice().sort((a,b)=>{const pa=toperiod(a.time||'').match(/^(\d+)/);const pb=toperiod(b.time||'').match(/^(\d+)/);return(pa?+pa[1]:99)-(pb?+pb[1]:99);});const groups=[];sorted.forEach(i=>{const p=+(toperiod(i.time||'').match(/^(\d+)/)||[0,99])[1];const last=groups[groups.length-1];if(['공예수업'].includes(subj)&&last&&last.grade===i.grade&&last.endP===p-1)last.endP=p;else groups.push({grade:i.grade,startP:p,endP:p,room:i.room});});return`<div style="margin-bottom:8px;"><div style="margin-bottom:4px;"><span class="chip ${SUBJ_COLOR[subj]||'chip-gray'}">${subj}</span></div>${groups.map(g=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px;"><span style="font-size:12px;font-weight:600;color:var(--text2);min-width:65px;">${g.startP===g.endP?g.startP+'교시':g.startP+'~'+g.endP+'교시'}</span><span style="font-weight:500;color:var(--accent);">${g.grade||''}</span></div>`).join('')}</div>`;}).join('');}}renderInstMonth();}
+function renderInst(){const dow=today.getDay();const lbl=document.getElementById('inst-lbl');if(lbl)lbl.textContent=`오늘 (${today.getMonth()+1}/${today.getDate()} ${DAYS[dow]}) 수업`;const todayItems=dedupeInst(allInst.filter(i=>i.year&&+i.year===today.getFullYear()&&+i.month===today.getMonth()+1&&+i.day===today.getDate()));const te=document.getElementById('inst-today');if(te){if(!todayItems.length)te.innerHTML='<div class="empty">오늘 협력수업이 없습니다.</div>';else te.innerHTML=buildInstTable(todayItems);}const homeInst=document.getElementById('home-inst');if(homeInst){if(!todayItems.length)homeInst.innerHTML='<div class="empty">오늘 협력수업이 없습니다.</div>';else{const subjMap={};todayItems.forEach(i=>{if(!subjMap[i.subject])subjMap[i.subject]=[];subjMap[i.subject].push(i);});homeInst.innerHTML=Object.entries(subjMap).map(([subj,list])=>{const sorted=list.slice().sort((a,b)=>{const pa=toperiod(a.time||'').match(/^(\d+)/);const pb=toperiod(b.time||'').match(/^(\d+)/);return(pa?+pa[1]:99)-(pb?+pb[1]:99);});const groups=[];sorted.forEach(i=>{const p=+(toperiod(i.time||'').match(/^(\d+)/)||[0,99])[1];const last=groups[groups.length-1];if(['공예수업'].includes(subj)&&last&&last.grade===i.grade&&last.endP===p-1)last.endP=p;else groups.push({grade:i.grade,startP:p,endP:p,room:i.room});});return`<div style="margin-bottom:8px;"><div style="margin-bottom:4px;"><span class="chip ${SUBJ_COLOR[subj]||'chip-gray'}">${subj}</span></div>${groups.map(g=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px;"><span style="font-size:12px;font-weight:600;color:var(--text2);min-width:65px;">${g.startP===g.endP?g.startP+'교시':g.startP+'~'+g.endP+'교시'}</span><span style="font-weight:500;color:var(--accent);">${g.grade||''}</span></div>`).join('')}</div>`;}).join('');}}renderInstMonth();
+
+  // ── 오늘 협력수업 팝업 (첫 로드 시 1회) ──
+  if (!window._instPopupShown && todayItems.length > 0) {
+    window._instPopupShown = true;
+    const SUBJ_COLOR_POP={'공예수업':'chip-amber','연극수업':'chip-blue','보건수업':'chip-green','집단상담':'chip-red','공동체 놀이':'chip-gray'};
+    const sorted=[...todayItems].sort((a,b)=>{
+      const pa=+(toperiod(a.time||'').match(/^(\d+)/)||[0,99])[1];
+      const pb=+(toperiod(b.time||'').match(/^(\d+)/)||[0,99])[1];
+      return pa-pb;
+    });
+    const bodyEl=document.getElementById('inst-popup-body');
+    if(bodyEl){
+      bodyEl.innerHTML=sorted.map(i=>{
+        const p=toperiod(i.time||'');
+        const color=SUBJ_COLOR_POP[i.subject]||'chip-gray';
+        return `<div class="inst-popup-row"><div class="inst-popup-period">${p}</div><span class="chip ${color}">${i.subject}</span><span style="flex:1;font-weight:500;color:var(--accent);margin-left:6px;">${i.grade||''}</span></div>`;
+      }).join('');
+      document.getElementById('inst-today-popup').classList.add('open');
+    }
+  }}
 function renderInstMonth(){const titleEl=document.getElementById('inst-month-title');if(titleEl)titleEl.textContent=`${instY}년 ${instM}월`;const dated=dedupeInst(allInst.filter(i=>i.year&&+i.year===instY&&+i.month===instM));const listEl=document.getElementById('inst-month-list');if(!listEl)return;const allSubjects=['전체',...new Set(dated.map(i=>i.subject).filter(Boolean))];const tabEl=document.getElementById('inst-subject-tabs');if(tabEl)tabEl.innerHTML=allSubjects.map(s=>`<button class="tab ${s===curInstSubject?'active':''}" onclick="setInstSubject('${s}')">${s}</button>`).join('');const filtered=curInstSubject==='전체'?dated:dated.filter(i=>i.subject===curInstSubject);if(!filtered.length){listEl.innerHTML='<div class="empty">이달 해당 수업이 없습니다.</div>';return;}const DOW_KR=['일','월','화','수','목','금','토'];const dayMap={};filtered.forEach(i=>{const k=+i.day;if(!dayMap[k])dayMap[k]=[];dayMap[k].push(i);});const days=Object.keys(dayMap).map(Number).sort((a,b)=>a-b);listEl.innerHTML=days.map(d=>{const dt=new Date(instY,instM-1,d);const dowKr=DOW_KR[dt.getDay()];const isToday=d===today.getDate()&&instM===today.getMonth()+1&&instY===today.getFullYear();return`<div class="inst-day-block"><div class="inst-day-header"><div class="inst-day-num ${isToday?'today':''}"><span class="num">${d}</span><span class="dow">${dowKr}</span></div></div>${buildInstTable(dayMap[d])}</div>`;}).join('');}
 window.setInstSubject=s=>{curInstSubject=s;renderInstMonth();};
 window.instPrev=()=>{instM--;if(instM<1){instM=12;instY--;}renderInstMonth();};
@@ -780,10 +861,109 @@ window.openUpload=sec=>{
 window.closeUpload=e=>{if(e&&e.target!==document.getElementById('up-ov'))return;document.getElementById('up-ov').classList.remove('open');upSec=null;};
 window.doUpload=async()=>{const f=document.getElementById('csv-input').files[0];if(!f){alert('파일을 선택하세요.');return;}const txt=await readCSVFile(f);const lines=txt.split('\n').filter(l=>l.trim()&&!l.startsWith('#'));if(lines.length<2){alert('데이터가 없습니다.');return;}const headers=lines[0].split(',').map(h=>h.replace(/"/g,'').trim());const rows=lines.slice(1).map(line=>{const vals=line.split(',').map(v=>v.replace(/^"|"$/g,'').trim());const obj={};headers.forEach((h,i)=>{obj[h]=vals[i]||'';});return obj;}).filter(r=>Object.values(r).some(v=>v));const cm={calendar:'calendar',instructor:'instructors',afterschool:'afterschool'};const coll=cm[upSec];const nf={calendar:['year','month','day'],instructor:['dayOfWeek','year','month','day'],afterschool:['day']};rows.forEach(r=>{(nf[upSec]||[]).forEach(fld=>{if(r[fld])r[fld]=+r[fld];});});const snap=await getDocs(collection(db,coll));await Promise.all(snap.docs.map(d=>deleteDoc(doc(db,coll,d.id))));await Promise.all(rows.map(r=>addDoc(collection(db,coll),r)));alert(`${rows.length}건 업로드 완료!`);closeUpload();};
 
-async function loadWeather(){const el=document.getElementById('home-weather');if(!el)return;try{const[wRes,aqRes]=await Promise.all([fetch('https://api.open-meteo.com/v1/forecast?latitude=36.02&longitude=127.08&current=temperature_2m,weather_code,windspeed_10m,relative_humidity_2m&timezone=Asia%2FSeoul'),fetch('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=36.02&longitude=127.08&current=pm10,pm2_5&timezone=Asia%2FSeoul')]);const w=await wRes.json(),aq=await aqRes.json();const temp=Math.round(w.current.temperature_2m),hum=w.current.relative_humidity_2m,wcode=w.current.weather_code;const pm10=Math.round(aq.current.pm10),pm25=Math.round(aq.current.pm2_5);const WICON={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'🌨️',80:'🌦️',81:'🌧️',82:'🌧️',95:'⛈️',96:'⛈️',99:'⛈️'};const WNAME={0:'맑음',1:'대체로 맑음',2:'구름 조금',3:'흐림',45:'안개',48:'짙은 안개',51:'이슬비',53:'이슬비',55:'이슬비',61:'비',63:'비',65:'강한 비',71:'눈',73:'눈',75:'강한 눈',80:'소나기',81:'소나기',82:'강한 소나기',95:'뇌우',96:'뇌우',99:'뇌우'};const icon=WICON[wcode]||'🌡️',wname=WNAME[wcode]||'';const pm10G=pm10<=30?['좋음','var(--green)']:pm10<=80?['보통','var(--accent)']:pm10<=150?['나쁨','var(--amber)']:['매우나쁨','var(--red)'];const pm25G=pm25<=15?['좋음','var(--green)']:pm25<=35?['보통','var(--accent)']:pm25<=75?['나쁨','var(--amber)']:['매우나쁨','var(--red)'];el.innerHTML=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><span style="font-size:28px;line-height:1;">${icon}</span><div><div class="weather-temp">${temp}°C</div><div class="weather-desc">${wname} · 습도 ${hum}%</div></div></div><div style="display:flex;gap:6px;flex-wrap:wrap;"><span class="weather-pill" style="color:${pm10G[1]};">미세먼지 ${pm10}㎍ <b>${pm10G[0]}</b></span><span class="weather-pill" style="color:${pm25G[1]};">초미세 ${pm25}㎍ <b>${pm25G[0]}</b></span></div>`;}catch(e){el.innerHTML='<span style="font-size:12px;color:var(--text3);">날씨 정보를 불러올 수 없습니다.</span>';}}
+async function loadWeather(){
+  const el=document.getElementById('home-weather');if(!el)return;
+  try{
+    const[wRes,aqRes]=await Promise.all([
+      fetch('https://api.open-meteo.com/v1/forecast?latitude=36.02&longitude=127.08&current=temperature_2m,weather_code,windspeed_10m,relative_humidity_2m&timezone=Asia%2FSeoul'),
+      fetch('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=36.02&longitude=127.08&current=pm10,pm2_5&timezone=Asia%2FSeoul')
+    ]);
+    const w=await wRes.json(),aq=await aqRes.json();
+    const temp=Math.round(w.current.temperature_2m),hum=w.current.relative_humidity_2m,wcode=w.current.weather_code;
+    const pm10=Math.round(aq.current.pm10),pm25=Math.round(aq.current.pm2_5);
+    const WICON={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'🌨️',80:'🌦️',81:'🌧️',82:'🌧️',95:'⛈️',96:'⛈️',99:'⛈️'};
+    const WNAME={0:'맑음',1:'대체로 맑음',2:'구름 조금',3:'흐림',45:'안개',48:'짙은 안개',51:'이슬비',53:'이슬비',55:'이슬비',61:'비',63:'비',65:'강한 비',71:'눈',73:'눈',75:'강한 눈',80:'소나기',81:'소나기',82:'강한 소나기',95:'뇌우',96:'뇌우',99:'뇌우'};
+    const icon=WICON[wcode]||'🌡️',wname=WNAME[wcode]||'';
+    const pm10G=pm10<=30?['좋음','var(--green)']:pm10<=80?['보통','var(--accent)']:pm10<=150?['나쁨','var(--amber)']:['매우나쁨','var(--red)'];
+    const pm25G=pm25<=15?['좋음','var(--green)']:pm25<=35?['보통','var(--accent)']:pm25<=75?['나쁨','var(--amber)']:['매우나쁨','var(--red)'];
+
+    // 야외활동 판단 (pm10 + pm25 + 날씨코드 종합)
+    const rainCodes=[51,53,55,61,63,65,71,73,75,80,81,82,95,96,99];
+    const isRain=rainCodes.includes(wcode);
+    const isFog=[45,48].includes(wcode);
+    let outdoor, outdoorColor, outdoorBg;
+    if(isRain){
+      outdoor='🌧 비/눈 — 야외활동 자제'; outdoorColor='var(--red)'; outdoorBg='var(--red-lt)';
+    } else if(isFog){
+      outdoor='🌫 안개 — 야외활동 주의'; outdoorColor='var(--amber)'; outdoorBg='var(--amber-lt)';
+    } else if(pm10>150||pm25>75){
+      outdoor='😷 미세먼지 매우나쁨 — 야외활동 금지'; outdoorColor='var(--red)'; outdoorBg='var(--red-lt)';
+    } else if(pm10>80||pm25>35){
+      outdoor='😮‍💨 미세먼지 나쁨 — 야외활동 자제'; outdoorColor='var(--amber)'; outdoorBg='var(--amber-lt)';
+    } else if(pm10>30||pm25>15){
+      outdoor='🙂 미세먼지 보통 — 야외활동 가능'; outdoorColor='var(--accent)'; outdoorBg='var(--accent-lt)';
+    } else {
+      outdoor='😊 맑고 쾌청 — 야외활동 적합!'; outdoorColor='var(--green)'; outdoorBg='var(--green-lt)';
+    }
+
+    el.innerHTML=`
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span style="font-size:28px;line-height:1;">${icon}</span>
+        <div><div class="weather-temp">${temp}°C</div><div class="weather-desc">${wname} · 습도 ${hum}%</div></div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+        <span class="weather-pill" style="color:${pm10G[1]};">미세먼지 ${pm10}㎍ <b>${pm10G[0]}</b></span>
+        <span class="weather-pill" style="color:${pm25G[1]};">초미세 ${pm25}㎍ <b>${pm25G[0]}</b></span>
+      </div>
+      <div style="font-size:11.5px;font-weight:600;padding:6px 10px;border-radius:6px;background:${outdoorBg};color:${outdoorColor};">${outdoor}</div>`;
+  }catch(e){el.innerHTML='<span style="font-size:12px;color:var(--text3);">날씨 정보를 불러올 수 없습니다.</span>';}
+}
 
 const NEIS_KEY='27c046fa2fb64bb2b91bf9bb5cbcd31e';
-async function loadMeal(){const el=document.getElementById('home-meal');if(!el)return;const d=today;const dateStr=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;try{const url=`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_KEY}&Type=json&ATPT_OFCDC_SC_CODE=P10&SD_SCHUL_CODE=8352124&MLSV_YMD=${dateStr}`;const res=await fetch(url);const json=await res.json();const code=json?.RESULT?.CODE||json?.mealServiceDietInfo?.[0]?.head?.[1]?.RESULT?.CODE;if(code==='INFO-200'){el.innerHTML='<span style="font-size:12px;color:var(--text3);">오늘 급식 정보가 없습니다.</span>';return;}const rows=json?.mealServiceDietInfo?.[1]?.row;if(!rows?.length){el.innerHTML='<span style="font-size:12px;color:var(--text3);">급식 정보를 불러올 수 없습니다.</span>';return;}const meal=rows[0];const dishes=(meal.DDISH_NM||'').replace(/<br\/>/g,'\n').split('\n').map(s=>s.replace(/\s*\([\d.]+\)/g,'').trim()).filter(Boolean);const cal=meal.CAL_INFO||'';el.innerHTML=`<div style="font-size:12.5px;line-height:1.9;">${dishes.map(s=>`<div style="display:flex;align-items:center;gap:5px;"><span style="color:var(--accent);font-size:8px;">●</span>${s}</div>`).join('')}</div>${cal?`<div style="font-size:10px;color:var(--text3);margin-top:4px;font-family:'JetBrains Mono',monospace;">${cal}</div>`:''}`;}catch(e){el.innerHTML='<span style="font-size:12px;color:var(--text3);">급식 정보를 불러올 수 없습니다.</span>';}}
+async function loadMeal(){
+  const el=document.getElementById('home-meal');if(!el)return;
+  const d=today;
+  const dateStr=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  try{
+    const url=`https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${NEIS_KEY}&Type=json&ATPT_OFCDC_SC_CODE=P10&SD_SCHUL_CODE=8352124&MLSV_YMD=${dateStr}`;
+    const res=await fetch(url);const json=await res.json();
+    const code=json?.RESULT?.CODE||json?.mealServiceDietInfo?.[0]?.head?.[1]?.RESULT?.CODE;
+    if(code==='INFO-200'){el.innerHTML='<span style="font-size:12px;color:var(--text3);">오늘 급식 정보가 없습니다.</span>';return;}
+    const rows=json?.mealServiceDietInfo?.[1]?.row;
+    if(!rows?.length){el.innerHTML='<span style="font-size:12px;color:var(--text3);">급식 정보를 불러올 수 없습니다.</span>';return;}
+    const meal=rows[0];
+    const dishes=(meal.DDISH_NM||'').replace(/<br\/>/g,'\n').split('\n').map(s=>s.replace(/\s*\([\d.]+\)/g,'').trim()).filter(Boolean);
+    const cal=meal.CAL_INFO||'';
+
+    // 메뉴명→이모지 매핑
+    function getMealEmoji(name){
+      const n=name;
+      if(/밥|쌀|보리|잡곡|현미|찰밥|김밥|비빔밥|볶음밥|주먹밥|공기밥/.test(n)) return '🍚';
+      if(/국수|라면|우동|스파게티|파스타|냉면|소면|짜장|짬뽕/.test(n)) return '🍜';
+      if(/빵|토스트|샌드위치|햄버거|핫도그/.test(n)) return '🥪';
+      if(/국|탕|찌개|전골|된장|미역|콩나물|시금치국|뭇국|북어|만두국|육개장|순두부|갈비탕|설렁탕/.test(n)) return '🍲';
+      if(/김치/.test(n)) return '🥬';
+      if(/치킨|닭|통닭|후라이드|양념치킨/.test(n)) return '🍗';
+      if(/돼지|제육|불고기|삼겹|소불고기|갈비|스테이크/.test(n)) return '🥩';
+      if(/생선|고등어|갈치|조기|명태|동태|연어|참치|꽁치/.test(n)) return '🐟';
+      if(/새우|오징어|문어|게|조개|홍합/.test(n)) return '🦐';
+      if(/계란|달걀|후라이|스크램블/.test(n)) return '🍳';
+      if(/두부|순두부/.test(n)) return '🟨';
+      if(/떡|가래떡|인절미|떡볶이/.test(n)) return '🍡';
+      if(/샐러드|채소|야채|브로콜리|양배추|당근|오이|파프리카/.test(n)) return '🥗';
+      if(/과일|사과|배|귤|수박|포도|딸기|바나나|오렌지|키위/.test(n)) return '🍎';
+      if(/우유|요구르트|요거트/.test(n)) return '🥛';
+      if(/케이크|과자|쿠키|초콜릿|젤리|푸딩/.test(n)) return '🍰';
+      if(/볶음|무침|나물|조림|구이/.test(n)) return '🥘';
+      if(/소시지|햄|베이컨/.test(n)) return '🌭';
+      if(/카레/.test(n)) return '🍛';
+      if(/라볶이|떡볶이/.test(n)) return '🌶️';
+      if(/수프|크림/.test(n)) return '🥣';
+      if(/주스|음료|스무디/.test(n)) return '🧃';
+      return '🍽️';
+    }
+
+    el.innerHTML=`
+      <div class="meal-tray">
+        ${dishes.map(s=>`
+          <div class="meal-tray-item">
+            <span class="meal-tray-emoji">${getMealEmoji(s)}</span>
+            <span class="meal-tray-name">${s}</span>
+          </div>`).join('')}
+      </div>
+      ${cal?`<div style="font-size:10px;color:var(--text3);margin-top:6px;font-family:'JetBrains Mono',monospace;">${cal}</div>`:''}`;
+  }catch(e){el.innerHTML='<span style="font-size:12px;color:var(--text3);">급식 정보를 불러올 수 없습니다.</span>';}
+}
 loadWeather();loadMeal();
 
 const ROOMS=['다목적실(강당)','도서관','무한상상실'];
