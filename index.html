@@ -756,7 +756,7 @@ window.updateBaseSchedule=(room,dow,period,grade)=>{if(!BASE_SCHEDULE[room])BASE
 // 서비스 워커 등록
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    navigator.serviceWorker.register('./sw.js')
       .then(() => console.log('[PWA] 서비스 워커 등록 완료'))
       .catch(e => console.warn('[PWA] 서비스 워커 오류:', e));
   });
