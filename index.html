@@ -67,7 +67,7 @@ body {
 .main { flex: 1; margin-left: var(--sidebar-w); padding: 32px 48px 80px; max-width: 1100px; min-height: 100vh; }
 .sb-header { padding: 20px 16px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); }
 .sb-school { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.9); letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
-.sb-school-icon { width: 22px; height: 22px; background: var(--accent); border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #fff; font-weight: 700; }
+.sb-school-icon { width: 26px; height: 26px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
 .sb-sub { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 4px; padding-left: 30px; }
 .sb-date { font-size: 11px; color: rgba(255,255,255,0.25); margin-top: 3px; padding-left: 30px; font-family: 'JetBrains Mono', monospace; }
 .nav-section { padding: 12px 8px 4px; }
@@ -281,6 +281,22 @@ body {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(35,131,226,0.5);
 }
+
+/* ── D-day 카드 ── */
+.dday-item { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); }
+.dday-item:last-child { border-bottom:none; }
+.dday-badge { min-width:52px; text-align:center; border-radius:6px; padding:4px 0; flex-shrink:0; }
+.dday-badge .dday-num { font-size:16px; font-weight:700; line-height:1; font-family:'JetBrains Mono',monospace; }
+.dday-badge .dday-label { font-size:9px; font-weight:600; letter-spacing:.04em; margin-top:1px; }
+.dday-name { font-size:13px; font-weight:500; color:var(--text); flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dday-date { font-size:11px; color:var(--text3); font-family:'JetBrains Mono',monospace; white-space:nowrap; flex-shrink:0; }
+
+/* ── 메모 카드 ── */
+.memo-item { display:flex; align-items:flex-start; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); }
+.memo-item:last-child { border-bottom:none; }
+.memo-author { font-size:11px; font-weight:600; color:var(--accent); white-space:nowrap; flex-shrink:0; min-width:52px; }
+.memo-text { font-size:12.5px; color:var(--text2); flex:1; line-height:1.55; word-break:break-all; }
+.memo-time { font-size:10px; color:var(--text3); font-family:'JetBrains Mono',monospace; white-space:nowrap; flex-shrink:0; }
 </style>
 </head>
 <body>
@@ -288,7 +304,7 @@ body {
 <div class="shell">
   <aside class="sidebar" id="sidebar">
     <div class="sb-header">
-      <div class="sb-school"><div class="sb-school-icon">여</div> 여산초 선생님방</div>
+      <div class="sb-school" onclick="go('home',document.querySelector('[data-p=home]'))" style="cursor:pointer;" title="홈으로 이동"><div class="sb-school-icon">🏫</div> 여산초 선생님방</div>
       <div class="sb-sub">교직원 전용 워크스페이스</div>
       <div class="sb-date" id="sb-date"></div>
     </div>
@@ -317,12 +333,12 @@ body {
         </div>
       </div>
       <div id="urgent-wrap"></div>
-      <div class="grid-2" style="margin-bottom:12px;">
+      <div class="grid-2" style="margin-bottom:12px;grid-template-columns:1fr 1fr 1fr;">
         <div class="card" style="margin-bottom:0;">
           <div class="card-row"><span class="card-label">공지사항</span><button class="btn-link" onclick="go('notice',document.querySelector('[data-p=notice]'))">전체보기 →</button></div>
           <ul class="notice-list" id="home-notices"></ul>
         </div>
-        <div class="card" style="grid-row:span 2;margin-bottom:0;">
+        <div class="card" style="margin-bottom:0;">
           <div class="card-row"><span class="card-label">학사일정</span><button class="btn-link" onclick="go('calendar',document.querySelector('[data-p=calendar]'))">전체보기 →</button></div>
           <div class="cal-nav">
             <button class="cal-btn" onclick="hPrev()">◂</button>
@@ -336,6 +352,25 @@ body {
           <div class="card-row"><span class="card-label">오늘의 협력수업</span><button class="btn-link" onclick="go('instructor',document.querySelector('[data-p=instructor]'))">전체보기 →</button></div>
           <div id="home-inst"></div>
         </div>
+
+        <!-- D-day 카운터 -->
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-row">
+            <span class="card-label">D-day</span>
+            <button class="btn-link" onclick="go('calendar',document.querySelector('[data-p=calendar]'))">일정 보기 →</button>
+          </div>
+          <div id="home-dday"><div class="empty" style="font-size:12px;">학사일정을 등록하면<br>자동으로 표시돼요</div></div>
+        </div>
+
+        <!-- 빠른 메모 -->
+        <div class="card" style="margin-bottom:0;grid-column:span 1;">
+          <div class="card-row">
+            <span class="card-label">빠른 메모</span>
+            <button class="btn-link" onclick="openMemoInput()">+ 작성</button>
+          </div>
+          <div id="home-memo-list"><div class="empty" style="font-size:12px;">메모가 없습니다</div></div>
+        </div>
+
       </div>
       <div class="grid-3" id="summary-bar" style="margin-bottom:12px;">
         <div class="card" style="margin-bottom:0;padding:16px 18px;">
@@ -696,7 +731,7 @@ if(t==='afterschool')return`<div class="fg"><label>반 구분</label><select id=
 if(t==='link')return`<div class="fg"><label>아이콘 (이모지)</label><input id="f-icon" value="${v.icon||'📊'}" style="max-width:80px;"></div><div class="fg"><label>이름</label><input id="f-name" value="${v.name||''}"></div><div class="fg"><label>설명</label><input id="f-desc" value="${v.desc||''}"></div><div class="fg"><label>URL</label><input id="f-url" value="${v.url||'https://'}"></div>`;
 return'';}
 
-window.saveModal=async()=>{const g=id=>document.getElementById(id)?.value?.trim()||'';let data={},coll='';if(curModal==='notice'){const rawDate=g('f-date');data={badge:g('f-badge'),title:g('f-title'),text:g('f-text'),date:rawDate?rawDate.replace(/-/g,'.'):'',expire:g('f-expire'),author:g('f-author'),createdAt:serverTimestamp()};coll='notices';if(!data.title){alert('제목을 입력하세요.');return;}}else if(curModal==='calendar'){data={year:+g('f-year'),month:+g('f-month'),day:+g('f-day'),name:g('f-name'),detail:g('f-detail'),type:g('f-type')};coll='calendar';if(!data.name||!data.day){alert('날짜와 일정명을 입력하세요.');return;}}else if(curModal==='instructor'){const dateVal=g('f-inst-date');if(!dateVal){alert('날짜를 입력하세요.');return;}const[yr,mo,dy]=dateVal.split('-').map(Number);data={year:yr,month:mo,day:dy,time:g('f-time'),subject:g('f-subject'),grade:g('f-grade'),room:'',detail:''};coll='instructors';if(!data.grade){alert('학년을 선택하세요.');return;}if(!editId){const existing=allInst.find(i=>+i.year===yr&&+i.month===mo&&+i.day===dy&&i.time===data.time&&i.subject===data.subject);if(existing){editId=existing.id;}}}else if(curModal==='afterschool'){data={className:g('f-class'),day:+g('f-day'),time:g('f-time'),program:g('f-program'),type:g('f-type'),location:g('f-location'),target:g('f-target')};coll='afterschool';if(!data.program||!data.time){alert('시간과 프로그램명을 입력하세요.');return;}}else if(curModal==='link'){data={icon:g('f-icon'),name:g('f-name'),desc:g('f-desc'),url:g('f-url')};coll='links';if(!data.name||!data.url){alert('이름과 URL을 입력하세요.');return;}}else if(curModal==='room'){const periodNum=+g('f-room-period');data={room:g('f-room-name'),date:g('f-room-date'),period:periodNum,teacher:g('f-room-teacher'),purpose:g('f-room-purpose'),createdAt:serverTimestamp()};coll='rooms';if(!data.room||!data.date||!data.period||!data.teacher){alert('공간, 날짜, 교시, 선생님을 입력하세요.');return;}const dt=new Date(data.date);const dow=dt.getDay()||7;const baseGrade=BASE_SCHEDULE[data.room]?.[dow]?.[periodNum];if(baseGrade&&!confirm(`⚠ ${data.date} ${data.room} ${periodNum}교시는 ${baseGrade} 수업 시간입니다.\n추가 예약하시겠습니까?`))return;const clash=allRooms.filter(r=>r.room===data.room&&r.date===data.date&&+r.period===periodNum);if(clash.length){alert(`이미 예약이 있습니다.\n예약자: ${clash[0].teacher}`);return;}}if(editId)await updateDoc(doc(db,coll,editId),data);else await addDoc(collection(db,coll),data);closeModal();};
+window.saveModal=async()=>{const g=id=>document.getElementById(id)?.value?.trim()||'';let data={},coll='';if(curModal==='notice'){const rawDate=g('f-date');data={badge:g('f-badge'),title:g('f-title'),text:g('f-text'),date:rawDate?rawDate.replace(/-/g,'.'):'',expire:g('f-expire'),author:g('f-author'),createdAt:serverTimestamp()};coll='notices';if(!data.title){alert('제목을 입력하세요.');return;}}else if(curModal==='calendar'){data={year:+g('f-year'),month:+g('f-month'),day:+g('f-day'),name:g('f-name'),detail:g('f-detail'),type:g('f-type')};coll='calendar';if(!data.name||!data.day){alert('날짜와 일정명을 입력하세요.');return;}}else if(curModal==='instructor'){const dateVal=g('f-inst-date');if(!dateVal){alert('날짜를 입력하세요.');return;}const[yr,mo,dy]=dateVal.split('-').map(Number);data={year:yr,month:mo,day:dy,time:g('f-time'),subject:g('f-subject'),grade:g('f-grade'),room:'',detail:''};coll='instructors';if(!data.grade){alert('학년을 선택하세요.');return;}if(!editId){const existing=allInst.find(i=>+i.year===yr&&+i.month===mo&&+i.day===dy&&i.time===data.time&&i.subject===data.subject);if(existing){editId=existing.id;}}}else if(curModal==='afterschool'){data={className:g('f-class'),day:+g('f-day'),time:g('f-time'),program:g('f-program'),type:g('f-type'),location:g('f-location'),target:g('f-target')};coll='afterschool';if(!data.program||!data.time){alert('시간과 프로그램명을 입력하세요.');return;}}else if(curModal==='link'){data={icon:g('f-icon'),name:g('f-name'),desc:g('f-desc'),url:g('f-url')};coll='links';if(!data.name||!data.url){alert('이름과 URL을 입력하세요.');return;}}else if(curModal==='room'){const periodNum=+g('f-room-period');data={room:g('f-room-name'),date:g('f-room-date'),period:periodNum,teacher:g('f-room-teacher'),purpose:g('f-room-purpose'),createdAt:serverTimestamp()};coll='rooms';if(!data.room||!data.date||!data.period||!data.teacher){alert('공간, 날짜, 교시, 선생님을 입력하세요.');return;}const dt=new Date(data.date);const dow=dt.getDay()||7;const baseGrade=BASE_SCHEDULE[data.room]?.[dow]?.[periodNum];if(baseGrade&&!confirm(`⚠ ${data.date} ${data.room} ${periodNum}교시는 ${baseGrade} 수업 시간입니다.\n추가 예약하시겠습니까?`))return;const clash=allRooms.filter(r=>r.room===data.room&&r.date===data.date&&+r.period===periodNum);if(clash.length){alert(`이미 예약이 있습니다.\n예약자: ${clash[0].teacher}`);return;}}if(curModal==='memo'){const text=document.getElementById('f-memo-text')?.value?.trim();const author=document.getElementById('f-memo-author')?.value?.trim()||'익명';if(!text){alert('내용을 입력하세요.');return;}await addDoc(collection(db,'memos'),{text,author,createdAt:serverTimestamp()});closeModal();return;}if(editId)await updateDoc(doc(db,coll,editId),data);else await addDoc(collection(db,coll),data);closeModal();};
 window.closeModal=(e)=>{if(e&&e.target!==document.getElementById('edit-ov'))return;document.getElementById('edit-ov').classList.remove('open');curModal=null;editId=null;};
 window.del=async(coll,id)=>{if(!confirm('삭제하시겠습니까?'))return;await deleteDoc(doc(db,coll,id));};
 window.openNoticePopup=function(id,title,text,date,author,badge){document.getElementById('modal-title').innerHTML=`<span class="badge ${BCLS[badge]||'badge-amber'}" style="margin-right:8px;">${BLBL[badge]||badge}</span>${title}`;document.getElementById('modal-body').innerHTML=`<div style="font-size:13px;line-height:1.8;color:var(--text2);white-space:pre-wrap;">${text||'(내용 없음)'}</div><div style="font-size:11px;color:var(--text3);margin-top:12px;font-family:'JetBrains Mono',monospace;border-top:1px solid var(--border);padding-top:10px;">${date||''} · ${author||''}</div>`;document.getElementById('notice-popup-save').style.display='none';document.getElementById('edit-ov').classList.add('open');};
@@ -744,6 +779,92 @@ window.openRoomModal=()=>{document.getElementById('modal-title').textContent='�
 const GRADE_OPTIONS=['','1학년','2학년','3학년','4학년','5학년','6학년'];
 const DOW_KR_ROOM=['','월','화','수','목','금'];
 window.openScheduleEdit=()=>{document.getElementById('modal-title').textContent='정규배정 수정';let html='<p style="font-size:12px;color:var(--text3);margin-bottom:16px;">각 셀의 학년을 수정하세요.</p>';ROOMS.forEach(room=>{html+=`<div style="margin-bottom:18px;"><div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px;">${room}</div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr><th style="padding:5px 8px;background:var(--surface2);color:var(--text3);font-size:10px;width:50px;">교시</th>${[1,2,3,4,5].map(d=>`<th style="padding:5px 8px;background:var(--surface2);color:var(--text3);font-size:10px;min-width:70px;">${DOW_KR_ROOM[d]}</th>`).join('')}</tr></thead><tbody>${PERIODS.map(p=>`<tr style="border-bottom:1px solid var(--border);"><td style="padding:5px 8px;background:var(--surface2);text-align:center;font-size:11px;font-weight:600;color:var(--text3);">${p}</td>${[1,2,3,4,5].map(d=>{const cur=BASE_SCHEDULE[room]?.[d]?.[p]||'';return`<td style="padding:4px 6px;text-align:center;"><select style="width:100%;padding:3px 4px;font-size:11px;border:1px solid var(--border2);border-radius:4px;background:var(--surface);" onchange="updateBaseSchedule('${room}',${d},${p},this.value)">${GRADE_OPTIONS.map(g=>`<option value="${g}" ${g===cur?'selected':''}>${g||'-'}</option>`).join('')}</select></td>`;}).join('')}</tr>`).join('')}</tbody></table></div></div>`;});document.getElementById('modal-body').innerHTML=html;document.getElementById('notice-popup-save').style.display='none';document.getElementById('edit-ov').classList.add('open');};
+
+/* ── D-day ── */
+function renderDday() {
+  const el = document.getElementById('home-dday');
+  if (!el) return;
+  const now = new Date();
+  now.setHours(0,0,0,0);
+
+  // 여름방학식 / 겨울방학식만 필터
+  const TARGETS = ['여름방학식', '겨울방학식'];
+  const found = allEv
+    .filter(e => TARGETS.some(t => (e.name||'').includes(t)))
+    .map(e => {
+      const d = new Date(+e.year, +e.month-1, +e.day);
+      const diff = Math.round((d - now) / (1000*60*60*24));
+      return { ...e, diff };
+    })
+    .filter(e => e.diff >= 0)
+    .sort((a, b) => a.diff - b.diff)
+    .slice(0, 1); // 가장 가까운 1개만
+
+  if (!found.length) {
+    el.innerHTML = '<div class="empty" style="font-size:12px;">학사일정에 여름방학식 또는<br>겨울방학식을 등록해 주세요</div>';
+    return;
+  }
+
+  const e = found[0];
+  const isToday = e.diff === 0;
+  const isSummer = (e.name||'').includes('여름');
+  const emoji = isSummer ? '☀️' : '❄️';
+  const accentColor = isSummer ? '#F59E0B' : '#3B82F6';
+  const bgColor = isSummer ? '#FFFBEB' : '#EFF6FF';
+
+  // 큼직하게 메인 D-day 표시
+  const numTxt = isToday ? 'D-Day!' : `D-${e.diff}`;
+  const subTxt = isToday ? '오늘이에요! 🎉' : e.diff === 1 ? '내일이에요!' : `${e.diff}일 남았어요`;
+
+  el.innerHTML = `
+    <div style="text-align:center;padding:12px 0 8px;">
+      <div style="font-size:28px;margin-bottom:6px;">${emoji}</div>
+      <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px;">${e.name}</div>
+      <div style="font-size:36px;font-weight:700;color:${accentColor};font-family:'JetBrains Mono',monospace;line-height:1;">${numTxt}</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:6px;">${subTxt}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;font-family:'JetBrains Mono',monospace;">${e.year}.${String(e.month).padStart(2,'0')}.${String(e.day).padStart(2,'0')}</div>
+    </div>`;
+}
+
+/* ── 빠른 메모 ── */
+onSnapshot(query(collection(db,'memos'), orderBy('createdAt','desc')), snap => {
+  const memos = snap.docs.map(d => ({id:d.id,...d.data()})).slice(0,8);
+  window._allMemos = snap.docs.map(d => ({id:d.id,...d.data()}));
+  const el = document.getElementById('home-memo-list');
+  if (!el) return;
+  if (!memos.length) {
+    el.innerHTML = '<div class="empty" style="font-size:12px;">메모가 없습니다</div>';
+    return;
+  }
+  el.innerHTML = memos.map(m => {
+    const t = m.createdAt?.toDate ? m.createdAt.toDate() : new Date();
+    const timeStr = `${String(t.getMonth()+1).padStart(2,'0')}/${String(t.getDate()).padStart(2,'0')} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+    return `<div class="memo-item">
+      <div class="memo-author">${m.author||'익명'}</div>
+      <div class="memo-text">${m.text||''}</div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;">
+        <span class="memo-time">${timeStr}</span>
+        <button class="btn btn-danger" style="font-size:10px;padding:1px 6px;" onclick="delMemo('${m.id}')">삭제</button>
+      </div>
+    </div>`;
+  }).join('');
+});
+
+window.openMemoInput = () => {
+  document.getElementById('modal-title').textContent = '메모 작성';
+  document.getElementById('modal-body').innerHTML = `
+    <div class="fg"><label>작성자</label><input id="f-memo-author" placeholder="홍길동 선생님" maxlength="12"></div>
+    <div class="fg"><label>내용</label><textarea id="f-memo-text" placeholder="간단한 메모를 남겨주세요" style="min-height:100px;" maxlength="200"></textarea></div>`;
+  document.getElementById('notice-popup-save').style.display = '';
+  curModal = 'memo';
+  document.getElementById('edit-ov').classList.add('open');
+};
+
+window.delMemo = async id => {
+  if (!confirm('메모를 삭제하시겠습니까?')) return;
+  await deleteDoc(doc(db,'memos',id));
+};
+
 window.updateBaseSchedule=(room,dow,period,grade)=>{if(!BASE_SCHEDULE[room])BASE_SCHEDULE[room]={};if(!BASE_SCHEDULE[room][dow])BASE_SCHEDULE[room][dow]={};if(grade)BASE_SCHEDULE[room][dow][period]=grade;else delete BASE_SCHEDULE[room][dow][period];renderRooms();};
 </script>
 
