@@ -381,6 +381,54 @@ body {
 }
 .meal-tray-emoji { font-size:18px; flex-shrink:0; }
 .meal-tray-name { font-size:11.5px; color:var(--text); font-weight:500; line-height:1.35; }
+
+/* ── 홈 대시보드 레이아웃 ── */
+.home-top {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: start;
+}
+.home-bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: start;
+}
+.home-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.home-col .card { margin-bottom: 0; }
+
+/* 달력: 오른쪽 컬럼에서 꽉 채우기 */
+.home-cal-card .cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  width: 100%;
+}
+.home-cal-card .cal-nav {
+  margin-bottom: 10px;
+}
+.home-cal-card .cc {
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 1;
+  height: auto;
+  font-size: 12px;
+}
+.home-cal-card .cdn {
+  font-size: 11px;
+}
+
+/* 모바일 */
+@media (max-width: 900px) {
+  .home-top, .home-bottom { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
@@ -418,44 +466,51 @@ body {
         <div id="header-dday" style="text-align:right;flex-shrink:0;"></div>
       </div>
       <div id="urgent-wrap"></div>
-      <div class="grid-2" style="margin-bottom:12px;">
-        <div class="card" style="margin-bottom:0;">
-          <div class="card-row"><span class="card-label">공지사항</span><button class="btn-link" onclick="go('notice',document.querySelector('[data-p=notice]'))">전체보기 →</button></div>
-          <ul class="notice-list" id="home-notices"></ul>
-        </div>
-        <div class="card" style="grid-row:span 2;margin-bottom:0;">
-          <div class="card-row"><span class="card-label">학사일정</span><button class="btn-link" onclick="go('calendar',document.querySelector('[data-p=calendar]'))">전체보기 →</button></div>
-          <div class="cal-nav">
-            <button class="cal-btn" onclick="hPrev()">◂</button>
-            <span class="cal-title" id="h-cal-title"></span>
-            <button class="cal-btn" onclick="hNext()">▸</button>
+
+      <!-- 대시보드: 상단 2열 (공지·협력수업 | 학사일정) -->
+      <div class="home-top">
+        <div class="home-col">
+          <div class="card">
+            <div class="card-row"><span class="card-label">공지사항</span><button class="btn-link" onclick="go('notice',document.querySelector('[data-p=notice]'))">전체보기 →</button></div>
+            <ul class="notice-list" id="home-notices"></ul>
           </div>
-          <div class="cal-grid" id="h-cal-grid"></div>
-          <div id="h-cal-events" style="margin-top:12px;"></div>
+          <div class="card">
+            <div class="card-row"><span class="card-label">오늘의 협력수업</span><button class="btn-link" onclick="go('instructor',document.querySelector('[data-p=instructor]'))">전체보기 →</button></div>
+            <div id="home-inst"></div>
+          </div>
         </div>
-        <div class="card" style="margin-bottom:0;">
-          <div class="card-row"><span class="card-label">오늘의 협력수업</span><button class="btn-link" onclick="go('instructor',document.querySelector('[data-p=instructor]'))">전체보기 →</button></div>
-          <div id="home-inst"></div>
+        <div class="home-col">
+          <div class="card home-cal-card">
+            <div class="card-row"><span class="card-label">학사일정</span><button class="btn-link" onclick="go('calendar',document.querySelector('[data-p=calendar]'))">전체보기 →</button></div>
+            <div class="cal-nav">
+              <button class="cal-btn" onclick="hPrev()">◂</button>
+              <span class="cal-title" id="h-cal-title"></span>
+              <button class="cal-btn" onclick="hNext()">▸</button>
+            </div>
+            <div class="cal-grid" id="h-cal-grid"></div>
+            <div id="h-cal-events" style="margin-top:14px;"></div>
+          </div>
         </div>
-
-
-
       </div>
-      <div class="grid-3" id="summary-bar" style="margin-bottom:12px;">
-        <div class="card" style="margin-bottom:0;padding:16px 18px;">
+
+      <!-- 대시보드: 하단 3열 (날씨 | 급식 | 링크) -->
+      <div class="home-bottom">
+        <div class="card" style="margin-bottom:0;">
           <div class="card-label">오늘 날씨 · 여산</div>
           <div id="home-weather"><span style="font-size:12px;color:var(--text3);">불러오는 중...</span></div>
         </div>
-        <div class="card" style="margin-bottom:0;padding:16px 18px;">
+        <div class="card" style="margin-bottom:0;">
           <div class="card-label">오늘 급식</div>
           <div id="home-meal"><span style="font-size:12px;color:var(--text3);">불러오는 중...</span></div>
         </div>
-        <div class="card" style="margin-bottom:0;padding:16px 18px;">
+        <div class="card" style="margin-bottom:0;">
           <div class="card-label">빠른 링크</div>
           <div id="home-links"></div>
         </div>
       </div>
-      <div class="quote-card">
+
+            <!-- 하단: 한마디 -->
+      <div class="quote-card" style="margin-top:12px;">
         <div class="quote-label">오늘의 한마디</div>
         <div class="quote-text" id="quote-text"></div>
       </div>
