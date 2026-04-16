@@ -421,6 +421,11 @@ body {
 @media (max-width: 900px) {
   .home-wrap { grid-template-columns: 1fr; }
 }
+
+/* ── 홈 제외 페이지 최대 너비 제한 ── */
+.page-inner {
+  max-width: 960px;
+}
 </style>
 </head>
 <body>
@@ -514,14 +519,17 @@ body {
     </div>
 
     <div class="page" id="page-notice">
+      <div class="page-inner">
       <div class="page-header">
         <div class="page-title">공지사항</div>
         <div class="page-actions"><button class="btn btn-primary" onclick="openModal('notice')">+ 추가</button></div>
       </div>
       <div class="card"><ul class="notice-list" id="notice-list"></ul></div>
     </div>
+      </div>
 
     <div class="page" id="page-calendar">
+      <div class="page-inner">
       <div class="page-header">
         <div class="page-title">학사일정</div>
         <div class="page-actions">
@@ -547,8 +555,10 @@ body {
         </div>
       </div>
     </div>
+      </div>
 
     <div class="page" id="page-instructor">
+      <div class="page-inner">
       <div class="page-header">
         <div class="page-title">협력수업</div>
         <div class="page-actions">
@@ -574,8 +584,10 @@ body {
         <div id="inst-month-list"></div>
       </div>
     </div>
+      </div>
 
     <div class="page" id="page-afterschool">
+      <div class="page-inner">
       <div class="page-header">
         <div class="page-title">늘봄학교</div>
         <div class="page-actions">
@@ -602,16 +614,20 @@ body {
         </div>
       </div>
     </div>
+      </div>
 
     <div class="page" id="page-links">
+      <div class="page-inner">
       <div class="page-header">
         <div class="page-title">공유 링크</div>
         <button class="btn btn-primary" onclick="openModal('link')">+ 추가</button>
       </div>
       <div class="card"><div id="links-grid"></div></div>
     </div>
+      </div>
 
     <div class="page" id="page-rooms">
+      <div class="page-inner">
       <div class="page-header">
         <div class="page-title">공간 예약</div>
         <div class="page-actions">
@@ -635,6 +651,7 @@ body {
       <div class="card">
         <div class="card-label" style="margin-bottom:12px;">전체 예약 목록</div>
         <div id="room-list"></div>
+      </div>
       </div>
     </div>
   </main>
