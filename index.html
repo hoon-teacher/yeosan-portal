@@ -339,34 +339,54 @@ body {
 
 /* ── 협력수업 오늘 팝업 ── */
 #inst-today-popup {
-  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45);
-  backdrop-filter:blur(2px); z-index:9000;
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5);
+  backdrop-filter:blur(3px); z-index:9000;
   align-items:center; justify-content:center; padding:20px;
 }
 #inst-today-popup.open { display:flex; }
 .inst-popup-modal {
-  background:var(--surface); border-radius:12px; box-shadow:var(--shadow-lg);
-  width:100%; max-width:420px; overflow:hidden; border:1px solid var(--border);
+  background:var(--surface); border-radius:14px; box-shadow:var(--shadow-lg);
+  width:100%; max-width:460px; overflow:hidden; border:1px solid var(--border);
 }
 .inst-popup-head {
   display:flex; align-items:center; justify-content:space-between;
-  padding:16px 20px 12px; border-bottom:1px solid var(--border);
+  padding:18px 22px 14px;
   background:var(--accent); color:#fff;
 }
-.inst-popup-title { font-size:14px; font-weight:700; }
-.inst-popup-body { padding:16px 20px; }
-.inst-popup-row {
-  display:flex; align-items:center; gap:10px; padding:9px 0;
-  border-bottom:1px solid var(--border); font-size:13px;
-}
-.inst-popup-row:last-child { border-bottom:none; }
-.inst-popup-period {
-  font-size:12px; font-weight:700; color:var(--text3);
-  min-width:52px; font-family:'JetBrains Mono',monospace;
-}
+.inst-popup-title { font-size:15px; font-weight:700; }
+.inst-popup-body { padding:18px 22px; max-height:60vh; overflow-y:auto; }
 .inst-popup-foot {
-  padding:12px 20px; border-top:1px solid var(--border);
+  padding:14px 22px; border-top:1px solid var(--border);
   display:flex; justify-content:flex-end;
+}
+
+/* 학년별 행 (메인 구조) */
+.inst-popup-grade-row {
+  display:flex; align-items:flex-start; gap:14px;
+  padding:14px 0; border-bottom:1px solid var(--border);
+}
+.inst-popup-grade-row:first-child { padding-top:4px; }
+.inst-popup-grade-row:last-child { border-bottom:none; padding-bottom:4px; }
+
+.inst-popup-grade-name {
+  flex-shrink:0; min-width:52px;
+  font-size:16px; font-weight:700; color:var(--accent);
+  background:var(--accent-lt); border-radius:8px;
+  padding:8px 0; text-align:center;
+}
+.inst-popup-grade-subjects {
+  flex:1; display:flex; flex-direction:column; gap:6px;
+  padding-top:2px;
+}
+.inst-popup-subject-row {
+  display:flex; align-items:center; gap:10px;
+}
+.inst-popup-subject-row .chip {
+  font-size:12px; padding:4px 12px;
+}
+.inst-popup-periods {
+  font-size:13.5px; font-weight:600; color:var(--text);
+  font-family:'JetBrains Mono', monospace;
 }
 
 /* ── 급식판 ── */
@@ -865,17 +885,51 @@ function renderInst(){const dow=today.getDay();const lbl=document.getElementById
   if (!window._instPopupShown && todayItems.length > 0) {
     window._instPopupShown = true;
     const SUBJ_COLOR_POP={'공예수업':'chip-amber','연극수업':'chip-blue','보건수업':'chip-green','집단상담':'chip-red','공동체 놀이':'chip-gray'};
-    const sorted=[...todayItems].sort((a,b)=>{
-      const pa=+(toperiod(a.time||'').match(/^(\d+)/)||[0,99])[1];
-      const pb=+(toperiod(b.time||'').match(/^(\d+)/)||[0,99])[1];
-      return pa-pb;
+    const pNum = t => +(toperiod(t||'').match(/^(\d+)/)||[0,99])[1];
+
+    // 학년별 그룹화 → 학년별로 (수업별 교시 묶음) 만들기
+    const byGrade = {};
+    todayItems.forEach(i => {
+      const g = i.grade || '?';
+      if (!byGrade[g]) byGrade[g] = {};
+      if (!byGrade[g][i.subject]) byGrade[g][i.subject] = [];
+      byGrade[g][i.subject].push(pNum(i.time));
     });
-    const bodyEl=document.getElementById('inst-popup-body');
+
+    // 연속 교시는 "1·2교시"처럼 합치는 헬퍼
+    const compressPeriods = periods => {
+      const sorted = [...new Set(periods)].sort((a,b)=>a-b);
+      const groups = [];
+      let cur = [sorted[0]];
+      for (let i = 1; i < sorted.length; i++) {
+        if (sorted[i] === cur[cur.length-1] + 1) cur.push(sorted[i]);
+        else { groups.push(cur); cur = [sorted[i]]; }
+      }
+      groups.push(cur);
+      return groups.map(g => g.length===1 ? g[0]+'교시' : g[0]+'~'+g[g.length-1]+'교시').join(', ');
+    };
+
+    // 학년 정렬 (1학년 → 6학년)
+    const grades = Object.keys(byGrade).sort((a,b) => {
+      const na = parseInt(a)||99, nb = parseInt(b)||99;
+      return na - nb;
+    });
+
+    const bodyEl = document.getElementById('inst-popup-body');
     if(bodyEl){
-      bodyEl.innerHTML=sorted.map(i=>{
-        const p=toperiod(i.time||'');
-        const color=SUBJ_COLOR_POP[i.subject]||'chip-gray';
-        return `<div class="inst-popup-row"><div class="inst-popup-period">${p}</div><span class="chip ${color}">${i.subject}</span><span style="flex:1;font-weight:500;color:var(--accent);margin-left:6px;">${i.grade||''}</span></div>`;
+      bodyEl.innerHTML = grades.map(g => {
+        const subjects = Object.keys(byGrade[g]);
+        return `
+        <div class="inst-popup-grade-row">
+          <div class="inst-popup-grade-name">${g}</div>
+          <div class="inst-popup-grade-subjects">
+            ${subjects.map(s => {
+              const color = SUBJ_COLOR_POP[s] || 'chip-gray';
+              const periods = compressPeriods(byGrade[g][s]);
+              return `<div class="inst-popup-subject-row"><span class="chip ${color}">${s}</span><span class="inst-popup-periods">${periods}</span></div>`;
+            }).join('')}
+          </div>
+        </div>`;
       }).join('');
       document.getElementById('inst-today-popup').classList.add('open');
     }
