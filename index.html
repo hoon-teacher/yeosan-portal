@@ -446,6 +446,37 @@ body {
 .page-inner {
   max-width: 960px;
 }
+
+/* ── 협력수업 여러개 추가 ── */
+.bulk-inst-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 100px 32px;
+  gap: 8px; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.bulk-inst-row:last-child { border-bottom: none; }
+.bulk-inst-row select, .bulk-inst-row input {
+  padding: 6px 10px; font-size: 13px;
+  border: 1px solid var(--border2); border-radius: var(--rsm);
+  background: var(--surface); color: var(--text);
+  font-family: inherit; width: 100%;
+}
+.bulk-inst-row .bulk-del-btn {
+  background: var(--red-lt); color: var(--red);
+  border: none; border-radius: 6px;
+  width: 32px; height: 32px;
+  font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.bulk-inst-row .bulk-del-btn:hover { background: #F5D0CE; }
+.bulk-header {
+  display: grid;
+  grid-template-columns: 90px 1fr 100px 32px;
+  gap: 8px;
+  font-size: 11px; font-weight: 600; color: var(--text3);
+  padding: 6px 0; border-bottom: 1px solid var(--border2);
+  letter-spacing: 0.04em;
+}
 </style>
 </head>
 <body>
@@ -584,7 +615,8 @@ body {
         <div class="page-actions">
           <button class="btn btn-secondary btn-sm" onclick="dlCSV('instructor')">⬇ 예시 CSV</button>
           <button class="btn btn-secondary btn-sm" onclick="openUpload('instructor')">⬆ CSV 업로드</button>
-          <button class="btn btn-primary" onclick="openModal('instructor')">+ 추가</button>
+          <button class="btn btn-secondary btn-sm" onclick="openModal('instructor')">+ 단일 추가</button>
+          <button class="btn btn-primary" onclick="openBulkInstructor()">+ 여러개 추가</button>
         </div>
       </div>
       <div class="card">
@@ -959,8 +991,109 @@ if(t==='afterschool')return`<div class="fg"><label>반 구분</label><select id=
 if(t==='link')return`<div class="fg"><label>아이콘 (이모지)</label><input id="f-icon" value="${v.icon||'📊'}" style="max-width:80px;"></div><div class="fg"><label>이름</label><input id="f-name" value="${v.name||''}"></div><div class="fg"><label>설명</label><input id="f-desc" value="${v.desc||''}"></div><div class="fg"><label>URL</label><input id="f-url" value="${v.url||'https://'}"></div>`;
 return'';}
 
+
+/* ── 협력수업 여러개 추가 ── */
+window.openBulkInstructor = () => {
+  const todayStr = new Date().toISOString().slice(0,10);
+  document.getElementById('modal-title').textContent = '협력수업 여러개 추가';
+  document.getElementById('modal-body').innerHTML = `
+    <p style="font-size:12px;color:var(--text3);margin-bottom:12px;">
+      한 날짜에 여러 협력수업을 한번에 추가합니다. 저장을 눌러야 반영됩니다.
+    </p>
+    <div class="fg">
+      <label>날짜</label>
+      <input type="date" id="bulk-date" value="${todayStr}">
+    </div>
+    <div class="bulk-header">
+      <div>교시</div>
+      <div>수업명</div>
+      <div>학년</div>
+      <div></div>
+    </div>
+    <div id="bulk-inst-rows"></div>
+    <button class="btn btn-secondary btn-sm" onclick="addBulkRow()" style="margin-top:10px;">+ 행 추가</button>
+  `;
+  document.getElementById('notice-popup-save').textContent = '전체 저장';
+  document.getElementById('notice-popup-save').onclick = saveBulkInstructor;
+  document.getElementById('notice-popup-save').style.display = '';
+
+  // 초기 3행 추가
+  for (let i = 0; i < 3; i++) addBulkRow();
+
+  document.getElementById('edit-ov').classList.add('open');
+};
+
+window.addBulkRow = () => {
+  const rows = document.getElementById('bulk-inst-rows');
+  if (!rows) return;
+  const SUBJECTS = ['공예수업','연극수업','보건수업','집단상담','공동체 놀이'];
+  const GRADES = ['1학년','2학년','3학년','4학년','5학년','6학년'];
+  const idx = Date.now() + Math.random();
+  const row = document.createElement('div');
+  row.className = 'bulk-inst-row';
+  row.dataset.idx = idx;
+  row.innerHTML = `
+    <select class="bulk-period">
+      ${[1,2,3,4,5,6].map(p => `<option value="${p}교시">${p}교시</option>`).join('')}
+    </select>
+    <input type="text" class="bulk-subject" list="bulk-subj-list" placeholder="수업명 선택 또는 직접 입력">
+    <select class="bulk-grade">
+      ${GRADES.map(g => `<option value="${g}">${g}</option>`).join('')}
+    </select>
+    <button class="bulk-del-btn" onclick="this.parentElement.remove()" title="삭제">×</button>
+  `;
+  rows.appendChild(row);
+
+  // datalist 한번만 생성
+  if (!document.getElementById('bulk-subj-list')) {
+    const dl = document.createElement('datalist');
+    dl.id = 'bulk-subj-list';
+    dl.innerHTML = SUBJECTS.map(s => `<option value="${s}">`).join('');
+    document.body.appendChild(dl);
+  }
+};
+
+window.saveBulkInstructor = async () => {
+  const dateVal = document.getElementById('bulk-date')?.value;
+  if (!dateVal) { alert('날짜를 입력하세요.'); return; }
+  const [yr, mo, dy] = dateVal.split('-').map(Number);
+
+  const rows = document.querySelectorAll('#bulk-inst-rows .bulk-inst-row');
+  const items = [];
+  for (const row of rows) {
+    const time = row.querySelector('.bulk-period')?.value;
+    const subject = row.querySelector('.bulk-subject')?.value?.trim();
+    const grade = row.querySelector('.bulk-grade')?.value;
+    // 수업명이 비어있으면 무시 (선택적으로 빈 행 허용)
+    if (!subject) continue;
+    items.push({ year: yr, month: mo, day: dy, time, subject, grade, room: '', detail: '' });
+  }
+
+  if (items.length === 0) { alert('추가할 수업이 없습니다. 수업명을 입력하세요.'); return; }
+  if (!confirm(`${yr}년 ${mo}월 ${dy}일에 ${items.length}건의 협력수업을 추가합니다. 계속할까요?`)) return;
+
+  // 중복 검사 - 같은 날짜/교시/수업명이 이미 있으면 스킵
+  let added = 0, skipped = 0;
+  for (const item of items) {
+    const existing = allInst.find(i =>
+      +i.year === item.year && +i.month === item.month && +i.day === item.day &&
+      i.time === item.time && i.subject === item.subject
+    );
+    if (existing) { skipped++; continue; }
+    await addDoc(collection(db, 'instructors'), item);
+    added++;
+  }
+
+  alert(`추가 완료: ${added}건${skipped > 0 ? ` / 중복 스킵: ${skipped}건` : ''}`);
+
+  // 저장 버튼 원래 상태 복원
+  document.getElementById('notice-popup-save').textContent = '저장';
+  document.getElementById('notice-popup-save').onclick = saveModal;
+  closeModal();
+};
+
 window.saveModal=async()=>{const g=id=>document.getElementById(id)?.value?.trim()||'';let data={},coll='';if(curModal==='notice'){const rawDate=g('f-date');data={badge:g('f-badge'),title:g('f-title'),text:g('f-text'),date:rawDate?rawDate.replace(/-/g,'.'):'',expire:g('f-expire'),author:g('f-author'),createdAt:serverTimestamp()};coll='notices';if(!data.title){alert('제목을 입력하세요.');return;}}else if(curModal==='calendar'){data={year:+g('f-year'),month:+g('f-month'),day:+g('f-day'),name:g('f-name'),detail:g('f-detail'),type:g('f-type')};coll='calendar';if(!data.name||!data.day){alert('날짜와 일정명을 입력하세요.');return;}}else if(curModal==='instructor'){const dateVal=g('f-inst-date');if(!dateVal){alert('날짜를 입력하세요.');return;}const[yr,mo,dy]=dateVal.split('-').map(Number);data={year:yr,month:mo,day:dy,time:g('f-time'),subject:g('f-subject'),grade:g('f-grade'),room:'',detail:''};coll='instructors';if(!data.grade){alert('학년을 선택하세요.');return;}if(!editId){const existing=allInst.find(i=>+i.year===yr&&+i.month===mo&&+i.day===dy&&i.time===data.time&&i.subject===data.subject);if(existing){editId=existing.id;}}}else if(curModal==='afterschool'){data={className:g('f-class'),day:+g('f-day'),time:g('f-time'),program:g('f-program'),type:g('f-type'),location:g('f-location'),target:g('f-target')};coll='afterschool';if(!data.program||!data.time){alert('시간과 프로그램명을 입력하세요.');return;}}else if(curModal==='link'){data={icon:g('f-icon'),name:g('f-name'),desc:g('f-desc'),url:g('f-url')};coll='links';if(!data.name||!data.url){alert('이름과 URL을 입력하세요.');return;}}else if(curModal==='room'){const periodNum=+g('f-room-period');data={room:g('f-room-name'),date:g('f-room-date'),period:periodNum,teacher:g('f-room-teacher'),purpose:g('f-room-purpose'),createdAt:serverTimestamp()};coll='rooms';if(!data.room||!data.date||!data.period||!data.teacher){alert('공간, 날짜, 교시, 선생님을 입력하세요.');return;}const dt=new Date(data.date);const dow=dt.getDay()||7;const baseGrade=BASE_SCHEDULE[data.room]?.[dow]?.[periodNum];if(baseGrade&&!confirm(`⚠ ${data.date} ${data.room} ${periodNum}교시는 ${baseGrade} 수업 시간입니다.\n추가 예약하시겠습니까?`))return;const clash=allRooms.filter(r=>r.room===data.room&&r.date===data.date&&+r.period===periodNum);if(clash.length){alert(`이미 예약이 있습니다.\n예약자: ${clash[0].teacher}`);return;}}if(editId)await updateDoc(doc(db,coll,editId),data);else await addDoc(collection(db,coll),data);closeModal();};
-window.closeModal=(e)=>{if(e&&e.target!==document.getElementById('edit-ov'))return;document.getElementById('edit-ov').classList.remove('open');curModal=null;editId=null;};
+window.closeModal=(e)=>{if(e&&e.target!==document.getElementById('edit-ov'))return;document.getElementById('edit-ov').classList.remove('open');curModal=null;editId=null;const saveBtn=document.getElementById('notice-popup-save');if(saveBtn){saveBtn.textContent='저장';saveBtn.onclick=saveModal;}};
 window.del=async(coll,id)=>{if(!confirm('삭제하시겠습니까?'))return;await deleteDoc(doc(db,coll,id));};
 window.openNoticePopup=function(id,title,text,date,author,badge){document.getElementById('modal-title').innerHTML=`<span class="badge ${BCLS[badge]||'badge-amber'}" style="margin-right:8px;">${BLBL[badge]||badge}</span>${title}`;document.getElementById('modal-body').innerHTML=`<div style="font-size:13px;line-height:1.8;color:var(--text2);white-space:pre-wrap;">${text||'(내용 없음)'}</div><div style="font-size:11px;color:var(--text3);margin-top:12px;font-family:'JetBrains Mono',monospace;border-top:1px solid var(--border);padding-top:10px;">${date||''} · ${author||''}</div>`;document.getElementById('notice-popup-save').style.display='none';document.getElementById('edit-ov').classList.add('open');};
 window.openNoticeById=function(id){const n=_allNotices?.find(n=>n.id===id);if(!n)return;window.openNoticePopup(n.id,n.title||'',n.text||'',n.date||'',n.author||'',n.badge||'notice');};
