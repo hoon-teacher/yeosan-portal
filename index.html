@@ -1018,12 +1018,12 @@ window.openBulkInstructor = () => {
   document.getElementById('notice-popup-save').style.display = '';
 
   // 초기 3행 추가
-  for (let i = 0; i < 3; i++) addBulkRow();
+  for (let i = 1; i <= 6; i++) addBulkRow(i);
 
   document.getElementById('edit-ov').classList.add('open');
 };
 
-window.addBulkRow = () => {
+window.addBulkRow = (defaultPeriod) => {
   const rows = document.getElementById('bulk-inst-rows');
   if (!rows) return;
   const SUBJECTS = ['공예수업','연극수업','보건수업','집단상담','공동체 놀이'];
@@ -1034,7 +1034,7 @@ window.addBulkRow = () => {
   row.dataset.idx = idx;
   row.innerHTML = `
     <select class="bulk-period">
-      ${[1,2,3,4,5,6].map(p => `<option value="${p}교시">${p}교시</option>`).join('')}
+      ${[1,2,3,4,5,6].map(p => `<option value="${p}교시" ${p === defaultPeriod ? 'selected' : ''}>${p}교시</option>`).join('')}
     </select>
     <input type="text" class="bulk-subject" list="bulk-subj-list" placeholder="수업명 선택 또는 직접 입력">
     <select class="bulk-grade">
